@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <fstream>
 
 using namespace std;
 
@@ -96,19 +97,34 @@ void quicksort(int* arr, int ini, int fim, int& num_trocas_chamadas, string tipo
     }
 }
 
-int main() {
-    int num_vetores;
-    cin >> num_vetores;
+int main(int argc, char* argv[]) {
+    // Verifica se os arquivos de entrada e saída foram fornecidos
+    if (argc < 3) {
+        cerr << "Uso: " << argv[0] << " <arquivo_entrada> <arquivo_saida>" << endl;
+        return 1;
+    }
 
+    // Abre os arquivos de entrada e saída
+    ifstream input(argv[1]);
+    ofstream output(argv[2]);
+
+    if (!input.is_open() || !output.is_open()) {
+        cerr << "Erro ao abrir os arquivos de entrada ou saída." << endl;
+        return 1;
+    }
+
+    int num_vetores;
+    input >> num_vetores;
+
+    // Aloca os vetores dinamicamente
     int** vetores = new int*[num_vetores];
     int* tamanhos = new int[num_vetores];
 
     for (int i = 0; i < num_vetores; i++) {
-        cin >> tamanhos[i];
+        input >> tamanhos[i];
         vetores[i] = new int[tamanhos[i]];
-
         for (int j = 0; j < tamanhos[i]; j++) {
-            cin >> vetores[i][j];
+            input >> vetores[i][j];
         }
     }
 
@@ -118,7 +134,8 @@ int main() {
     int ordem_abreviacoes[6] = {0, 1, 2, 3, 4, 5}; // Ordem: LP, LM, LA, HP, HM, HA
 
     for (int idx = 0; idx < num_vetores; idx++) {
-        cout << idx << ":N(" << tamanhos[idx] << ")";
+        output << idx << ":N(" << tamanhos[idx] << ")";
+
         int resultados[6];
         string resultados_abreviacoes[6];
 
@@ -140,11 +157,11 @@ int main() {
             }
         }
 
-        // Ordena resultados
+        // Ordena os resultados
         for (int i = 0; i < 6; i++) {
             for (int j = i + 1; j < 6; j++) {
                 if (resultados[i] > resultados[j] || 
-                   (resultados[i] == resultados[j] && ordem_abreviacoes[i] > ordem_abreviacoes[j])) {
+                    (resultados[i] == resultados[j] && ordem_abreviacoes[i] > ordem_abreviacoes[j])) {
                     swap(resultados[i], resultados[j]);
                     swap(resultados_abreviacoes[i], resultados_abreviacoes[j]);
                 }
@@ -152,11 +169,12 @@ int main() {
         }
 
         for (int i = 0; i < 6; i++) {
-            cout << "," << resultados_abreviacoes[i] << "(" << resultados[i] << ")";
+            output << "," << resultados_abreviacoes[i] << "(" << resultados[i] << ")";
         }
-        cout << endl;
+        output << endl;
     }
 
+    // Libera a memória alocada
     for (int i = 0; i < num_vetores; i++) {
         delete[] vetores[i];
     }
