@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <random>
 #include <sstream>
+#include <map>
+#include <tuple>
 using namespace std;
 
 int randomPivotIndex(vector<int>& arr, int ini, int fim) {
@@ -92,27 +94,59 @@ void quicksort(vector<int>& arr, int ini, int fim, int& num_trocas_chamadas, str
     }
 }
 
+
 int main() {
-    vector<int> arr = {834, 27, 39, 19, 3, -1, -33}; 
+    int num_vetores;
+    cin >> num_vetores;
+    vector<vector<int>> vetores(num_vetores);
 
-    int num_trocas_chamadas = 0;
-
-    cout << "Original vector: ";
-    for (int num : arr) {
-        cout << num << " ";
+    for (int i = 0; i < num_vetores; i++) {
+        int tamanho;
+        cin >> tamanho;
+        vetores[i].resize(tamanho);
+        for (int j = 0; j < tamanho; j++) {
+            cin >> vetores[i][j];
+        }
     }
-    cout << endl;
 
-    quicksort(arr, 0, arr.size() - 1, num_trocas_chamadas, "padrao", "lomuto");
+    vector<string> metodos = {"lomuto", "hoare"};
+    vector<string> tipos = {"standard", "median", "random"};
+    map<string, string> abreviacoes = {
+        {"lomuto-padrão", "LP"},
+        {"lomuto-mediana", "LM"},
+        {"lomuto-aleatorio", "LA"},
+        {"hoare-padrão", "HP"},
+        {"hoare-mediana", "HM"},
+        {"hoare-aleatorio", "HA"}
+    };
 
-    cout << "Ordered vector: ";
-    for (int num : arr) {
-        cout << num << " ";
+    for (int idx = 0; idx < num_vetores; idx++) {
+        vector<int> arr = vetores[idx];
+        cout << idx << ":N(" << arr.size() << ")";
+        
+        vector<pair<int, string>> resultados;
+        for (const auto& metodo : metodos) {
+            for (const auto& tipo : tipos) {
+                vector<int> arr_copy = arr;
+                int num_trocas = 0;
+                quicksort(arr_copy, 0, arr.size() - 1, num_trocas, tipo, metodo);
+                string chave = metodo + "-" + tipo;
+                resultados.push_back({num_trocas, abreviacoes[chave]});
+            }
+        }
+
+        // Ordena resultados com base no número de trocas e critério de desempate
+        sort(resultados.begin(), resultados.end(), [](const pair<int, string>& a, const pair<int, string>& b) {
+            if (a.first != b.first) return a.first < b.first;
+            string ordem = "LP,LM,LA,HP,HM,HA";
+            return ordem.find(a.second) < ordem.find(b.second);
+        });
+
+        for (const auto& res : resultados) {
+            cout << "," << res.second << "(" << res.first << ")";
+        }
+        cout << endl;
     }
-    cout << endl;
-
-    // Exibir as estatísticas
-    cout << "Swaps and Calls: " << num_trocas_chamadas << endl;
 
     return 0;
 }
