@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <fstream>
 using namespace std;
 
 struct Container {
@@ -34,7 +35,7 @@ bool containerOk(const Container& cadastrado, const Container& selecionado) {
         return true;
 }
 
-Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados, Container* selecionados, int32_t qtdeSelecionados, Fiscalizacao* containeresNaoOk) {
+Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados, Container* selecionados, int32_t qtdeSelecionados, Fiscalizacao* containeresNaoOk, int32_t& qtdeNaoOk) {
     int32_t k = 0;
 
     for (int32_t i =  0; i < qtdeSelecionados; i++) {
@@ -49,6 +50,7 @@ Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados
                         prioridade,
                         diferencaPeso
                     };
+                    qtdeNaoOk++;
                 }
                 break;
             }
@@ -87,8 +89,9 @@ void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t ini
             if (vetorOriginal[i1].prioridade == 1) {
 
                 // ORDEM DE CADASTRO MAIS PRIORITARIA 
-                if (vetorOriginal[i1].container.ordemCadastro < vetorOriginal[i2].container.ordemCadastro)
-                    vetorAux[k++] = vetorOriginal[i1++];
+                if (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro){
+                    cout << vetorOriginal[i1].container.ordemCadastro;
+                    vetorAux[k++] = vetorOriginal[i1++];}
                 else 
                     vetorAux[k++] = vetorOriginal[i2++];
 
@@ -106,7 +109,7 @@ void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t ini
                 else if (vetorOriginal[i1].diferencaPeso == vetorOriginal[i2].diferencaPeso) {
 
                     // ORDEM DE CADASTRO MAIS PRIORITARIA 
-                    if (vetorOriginal[i1].container.ordemCadastro < vetorOriginal[i2].container.ordemCadastro)
+                    if (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro)
                         vetorAux[k++] = vetorOriginal[i1++];
                     else 
                         vetorAux[k++] = vetorOriginal[i2++];
@@ -161,45 +164,67 @@ void mergesort(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t iniS
 }
 
 // Função principal para testar o Merge Sort
-int main() {
-    Container cadastrados[6];
-    Container selecionados[5];
-    Fiscalizacao containeresNaoOK[4];
-    Fiscalizacao aux[4];
+int main(int argc, char* argv[]) {
 
-    cadastrados[0] = {"QOZJ7913219", "34.699.211/9365-11", 13822, 0};
-    cadastrados[1] = {"FCCU4584578", "50.503.434/5731-28", 16022, 1};
-    cadastrados[2] = {"KTAJ0603546", "20.500.522/6013-58", 25279, 2};
-    cadastrados[3] = {"ZYHU3978783", "43.172.263/4442-14", 24543, 3};
-    cadastrados[4] = {"IKQZ7582839", "51.743.446/1183-18", 12160, 4};
-    cadastrados[5] = {"HAAZ0273059", "25.699.428/4746-79", 16644, 5};
+    if (argc < 3) {
+        cerr << "Uso: " << argv[0] << " <arquivo_entrada> <arquivo_saida>" << endl;
+        return 1;
+    }
 
-    selecionados[0] = {"ZYHU3978783", "43.172.263/4442-14", 29765, 3};
-    selecionados[1] = {"IKQZ7582839", "51.743.446/1113-18", 18501, 4};
-    selecionados[2] = {"KTAJ0603546", "20.500.522/6113-58", 17842, 2};
-    selecionados[3] = {"QOZJ7913219", "34.699.211/9365-11", 16722, 0};
-    selecionados[4] = {"FCCU4584578", "50.503.434/5731-28", 16398, 1};
+    // Abre os arquivos de entrada e saída
+    ifstream input(argv[1]);
+    ofstream output(argv[2]);
 
-    separaContaineresNaoOk(cadastrados, 6, selecionados, 5, containeresNaoOK);
+    if (!input.is_open() || !output.is_open()) {
+        cerr << "Erro ao abrir os arquivos de entrada ou saída." << endl;
+        return 1;
+    }
 
-    mergesort(aux, containeresNaoOK, 0, 3);
+    int32_t numCadastrados;
+    input >> numCadastrados;
+
+    Container cadastrados[numCadastrados];
+    for (int i = 0; i < numCadastrados; i++) {
+        input >> cadastrados[i].codigo; 
+        input >> cadastrados[i].cnpj; 
+        input >> cadastrados[i].peso; 
+        cadastrados[i].ordemCadastro = i;
+    }
+
+    int32_t numSelecionados;
+    input >> numSelecionados;
+
+    Container selecionados[numSelecionados];
+    for (int i = 0; i < numSelecionados; i++) {
+        input >> selecionados[i].codigo;
+        input >> selecionados[i].cnpj;
+        input >> selecionados[i].peso;
+    }
+
+    Fiscalizacao containeresNaoOk[numSelecionados];
+    Fiscalizacao aux[numSelecionados];
+    int32_t numNaoOk = 0;
+
+    separaContaineresNaoOk(cadastrados, numCadastrados, selecionados, numSelecionados, containeresNaoOk, numNaoOk);
+
+    mergesort(aux, containeresNaoOk, 0, numNaoOk-1);
     
-    for (Fiscalizacao fiscalizacao : containeresNaoOK) {
-        if (fiscalizacao.prioridade == 1) {
-            cout 
-            << fiscalizacao.container.codigo 
+    for (int i = 0; i < numNaoOk; i++) {
+        if (containeresNaoOk[i].prioridade == 1) {
+            output 
+            << containeresNaoOk[i].container.codigo 
             << ":" 
-            << fiscalizacao.containerCadastrado.cnpj 
+            << containeresNaoOk[i].containerCadastrado.cnpj 
             << "<->" 
-            << fiscalizacao.container.cnpj 
+            << containeresNaoOk[i].container.cnpj 
             << "\n";
         } else {
-            cout 
-            << fiscalizacao.container.codigo 
+            output 
+            << containeresNaoOk[i].container.codigo 
             << ":" 
-            << abs(fiscalizacao.container.peso - fiscalizacao.containerCadastrado.peso) 
+            << abs(containeresNaoOk[i].container.peso - containeresNaoOk[i].containerCadastrado.peso) 
             << "kg(" 
-            << fiscalizacao.diferencaPeso 
+            << containeresNaoOk[i].diferencaPeso 
             << "%)"
             << "\n";  
         }
