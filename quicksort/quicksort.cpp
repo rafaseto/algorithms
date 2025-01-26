@@ -104,6 +104,7 @@ int main() {
         int tamanho;
         cin >> tamanho;
         vetores[i].resize(tamanho);
+
         for (int j = 0; j < tamanho; j++) {
             cin >> vetores[i][j];
         }
@@ -125,19 +126,23 @@ int main() {
         cout << idx << ":N(" << arr.size() << ")";
         
         vector<pair<int, string>> resultados;
-        for (const auto& metodo : metodos) {
-            for (const auto& tipo : tipos) {
+        for(const auto& metodo : metodos) {
+            for(const auto& tipo : tipos) {
                 vector<int> arr_copy = arr;
                 int num_trocas = 0;
+
                 quicksort(arr_copy, 0, arr.size() - 1, num_trocas, tipo, metodo);
+
                 string chave = metodo + "-" + tipo;
                 resultados.push_back({num_trocas, abreviacoes[chave]});
             }
         }
 
-        // Ordena resultados com base no número de trocas e critério de desempate
+        // Ordena resultados com base no número de trocas, tbm com o criterio de desempate
         sort(resultados.begin(), resultados.end(), [](const pair<int, string>& a, const pair<int, string>& b) {
-            if (a.first != b.first) return a.first < b.first;
+            if (a.first != b.first) {
+                return a.first < b.first;
+            }
             string ordem = "LP,LM,LA,HP,HM,HA";
             return ordem.find(a.second) < ordem.find(b.second);
         });
