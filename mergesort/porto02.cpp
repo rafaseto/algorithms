@@ -10,6 +10,7 @@ struct Container {
 };
 
 struct Fiscalizacao {
+    Container containerCadastrado;
     Container container;
     int32_t prioridade;
     int32_t diferencaPeso;
@@ -43,6 +44,7 @@ Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados
                     int32_t prioridade = (cadastrados[j].cnpj != selecionados[i].cnpj) ? 1 : 2;
                     int32_t diferencaPeso = arredondarSimples(abs(selecionados[i].peso - cadastrados[j].peso) * 100 / (double) cadastrados[j].peso);
                     containeresNaoOk[k++] = {
+                        cadastrados[j],
                         selecionados[i], 
                         prioridade,
                         diferencaPeso
@@ -102,7 +104,6 @@ void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t ini
 
                 // MESMA DIFF DE PESO --> VER ORDEM DO CADASTRO
                 else if (vetorOriginal[i1].diferencaPeso == vetorOriginal[i2].diferencaPeso) {
-                    cout << vetorOriginal[i1].container.codigo << "-" << vetorOriginal[i1].diferencaPeso << " AND " << vetorOriginal[i2].container.codigo << "-" << vetorOriginal[i2].diferencaPeso;
 
                     // ORDEM DE CADASTRO MAIS PRIORITARIA 
                     if (vetorOriginal[i1].container.ordemCadastro < vetorOriginal[i2].container.ordemCadastro)
@@ -180,15 +181,28 @@ int main() {
     selecionados[4] = {"FCCU4584578", "50.503.434/5731-28", 16398, 1};
 
     separaContaineresNaoOk(cadastrados, 6, selecionados, 5, containeresNaoOK);
-    cout << "\n";
-    for (Fiscalizacao fiscalizacao : containeresNaoOK) {
-        cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << "\n";
-    }
 
     mergesort(aux, containeresNaoOK, 0, 3);
-    cout << "\n";
+    
     for (Fiscalizacao fiscalizacao : containeresNaoOK) {
-        cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << " - " << fiscalizacao.diferencaPeso << "Kg" << "\n";
+        if (fiscalizacao.prioridade == 1) {
+            cout 
+            << fiscalizacao.container.codigo 
+            << ":" 
+            << fiscalizacao.containerCadastrado.cnpj 
+            << "<->" 
+            << fiscalizacao.container.cnpj 
+            << "\n";
+        } else {
+            cout 
+            << fiscalizacao.container.codigo 
+            << ":" 
+            << abs(fiscalizacao.container.peso - fiscalizacao.containerCadastrado.peso) 
+            << "kg(" 
+            << fiscalizacao.diferencaPeso 
+            << "%)"
+            << "\n";  
+        }
     }
 
     return 0;
