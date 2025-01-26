@@ -48,19 +48,19 @@ Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados
 }
 
 // Função para copiar elementos de um vetor para outro
-void copiar(int32_t* destino, int32_t* origem, int32_t tamanho) {
+void copiar(Fiscalizacao* destino, Fiscalizacao* origem, int32_t tamanho) {
     std::copy(origem, origem + tamanho, destino);
 }
 
 // Função para intercalar dois subarrays ordenados
-void intercalar(int32_t* vetorAux, int32_t* vetorOriginal, int32_t iniSubArr01, int32_t fimSubArr01, int32_t fimSubArr02) {
+void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t iniSubArr01, int32_t fimSubArr01, int32_t fimSubArr02) {
     int32_t i1 = iniSubArr01;     // Índice do primeiro subarray
     int32_t i2 = fimSubArr01 + 1; // Índice do segundo subarray
     int32_t k = iniSubArr01;      // Índice do vetor auxiliar
 
     // Intercala os elementos dos subarrays ordenados
     while (i1 <= fimSubArr01 && i2 <= fimSubArr02) {
-        if (vetorOriginal[i1] <= vetorOriginal[i2])
+        if (vetorOriginal[i1].prioridade <= vetorOriginal[i2].prioridade)
             vetorAux[k++] = vetorOriginal[i1++];
         else
             vetorAux[k++] = vetorOriginal[i2++];
@@ -80,7 +80,7 @@ void intercalar(int32_t* vetorAux, int32_t* vetorOriginal, int32_t iniSubArr01, 
 }
 
 // Função Merge Sort recursiva
-void mergesort(int32_t* vetorAux, int32_t* vetorOriginal, int32_t iniSubArr01, int32_t fimSubArr02) {
+void mergesort(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t iniSubArr01, int32_t fimSubArr02) {
     if (iniSubArr01 < fimSubArr02) {
         int32_t fimSubArr01 = iniSubArr01 + (fimSubArr02 - iniSubArr01) / 2;
 
@@ -97,7 +97,8 @@ void mergesort(int32_t* vetorAux, int32_t* vetorOriginal, int32_t iniSubArr01, i
 int main() {
     Container cadastrados[6];
     Container selecionados[5];
-    Fiscalizacao containeresNaoOK[6];
+    Fiscalizacao containeresNaoOK[4];
+    Fiscalizacao aux[4];
 
     cadastrados[0] = {"QOZJ7913219", "34.699.211/9365-11", 13822, 0};
     cadastrados[1] = {"FCCU4584578", "50.503.434/5731-28", 16022, 1};
@@ -118,6 +119,11 @@ int main() {
         cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << "\n";
     }
 
+    mergesort(aux, containeresNaoOK, 0, 3);
+
+    for (Fiscalizacao fiscalizacao : containeresNaoOK) {
+        cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << "\n";
+    }
 
     return 0;
 }
