@@ -15,6 +15,14 @@ struct Fiscalizacao {
     int32_t diferencaPeso;
 };
 
+int32_t arredondarSimples(double numero) {
+    if (numero >= 0) {
+        return static_cast<int>(numero + 0.5); // Arredonda para cima
+    } else {
+        return static_cast<int>(numero - 0.5); // Arredonda para baixo
+    }
+}
+
 // func para checar se o container ta ok
 bool containerOk(const Container& cadastrado, const Container& selecionado) {
     if (cadastrado.cnpj != selecionado.cnpj) 
@@ -33,7 +41,7 @@ Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados
             if (selecionados[i].codigo == cadastrados[j].codigo) {
                 if (!containerOk(cadastrados[j], selecionados[i])) {
                     int32_t prioridade = (cadastrados[j].cnpj != selecionados[i].cnpj) ? 1 : 2;
-                    int32_t diferencaPeso = (abs(selecionados[i].peso - cadastrados[j].peso) * 100 / cadastrados[j].peso + 0.5);
+                    int32_t diferencaPeso = arredondarSimples(abs(selecionados[i].peso - cadastrados[j].peso) * 100 / (double) cadastrados[j].peso);
                     containeresNaoOk[k++] = {
                         selecionados[i], 
                         prioridade,
