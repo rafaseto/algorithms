@@ -1,5 +1,4 @@
 #include <iostream>
-#include <algorithm>
 #include <string>
 using namespace std;
 
@@ -34,7 +33,7 @@ Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados
             if (selecionados[i].codigo == cadastrados[j].codigo) {
                 if (!containerOk(cadastrados[j], selecionados[i])) {
                     int32_t prioridade = (cadastrados[j].cnpj != selecionados[i].cnpj) ? 1 : 2;
-                    int32_t diferencaPeso = abs(selecionados[i].peso - cadastrados[j].peso) / cadastrados[j].peso;
+                    int32_t diferencaPeso = (abs(selecionados[i].peso - cadastrados[j].peso) * 100 / cadastrados[j].peso + 0.5);
                     containeresNaoOk[k++] = {
                         selecionados[i], 
                         prioridade,
@@ -58,13 +57,72 @@ void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t ini
     int32_t i2 = fimSubArr01 + 1; // Índice do segundo subarray
     int32_t k = iniSubArr01;      // Índice do vetor auxiliar
 
+
+
+
+
+
+
+
     // Intercala os elementos dos subarrays ordenados
     while (i1 <= fimSubArr01 && i2 <= fimSubArr02) {
-        if (vetorOriginal[i1].prioridade <= vetorOriginal[i2].prioridade)
+        // CNPJ DIVERGENTE TEM PRIORIDADE
+        if (vetorOriginal[i1].prioridade < vetorOriginal[i2].prioridade)
             vetorAux[k++] = vetorOriginal[i1++];
+
+        // MESMO GRAU DE PRIORIDADE
+        else if (vetorOriginal[i1].prioridade == vetorOriginal[i2].prioridade)
+
+            // AMBOS COM CNPJ DIVERGENTE --> VER ORDEM DO CADASTRO
+            if (vetorOriginal[i1].prioridade == 1) {
+
+                // ORDEM DE CADASTRO MAIS PRIORITARIA 
+                if (vetorOriginal[i1].container.ordemCadastro < vetorOriginal[i2].container.ordemCadastro)
+                    vetorAux[k++] = vetorOriginal[i1++];
+                else 
+                    vetorAux[k++] = vetorOriginal[i2++];
+
+            }
+    
+            // AMBOS COM DIFF GRANDE DE PESO
+            else {
+                
+                // DIFERENCA DE PESO MAIOR, LOGO MAIS PRIORITARIA
+                if (vetorOriginal[i1].diferencaPeso > vetorOriginal[i2].diferencaPeso) {
+                    vetorAux[k++] = vetorOriginal[i1++];
+                }
+
+                // MESMA DIFF DE PESO --> VER ORDEM DO CADASTRO
+                else if (vetorOriginal[i1].diferencaPeso == vetorOriginal[i2].diferencaPeso) {
+                    cout << vetorOriginal[i1].container.codigo << "-" << vetorOriginal[i1].diferencaPeso << " AND " << vetorOriginal[i2].container.codigo << "-" << vetorOriginal[i2].diferencaPeso;
+
+                    // ORDEM DE CADASTRO MAIS PRIORITARIA 
+                    if (vetorOriginal[i1].container.ordemCadastro < vetorOriginal[i2].container.ordemCadastro)
+                        vetorAux[k++] = vetorOriginal[i1++];
+                    else 
+                        vetorAux[k++] = vetorOriginal[i2++];
+
+                }
+
+                // DIFERENCA DE PESO MENOR
+                else 
+                    vetorAux[k++] = vetorOriginal[i2++];
+
+            }
+
         else
             vetorAux[k++] = vetorOriginal[i2++];
     }
+
+
+
+
+
+
+
+
+
+
 
     // Copia os elementos restantes do primeiro subarray, se houver
     if (i1 <= fimSubArr01) {
@@ -114,15 +172,15 @@ int main() {
     selecionados[4] = {"FCCU4584578", "50.503.434/5731-28", 16398, 1};
 
     separaContaineresNaoOk(cadastrados, 6, selecionados, 5, containeresNaoOK);
-    
+    cout << "\n";
     for (Fiscalizacao fiscalizacao : containeresNaoOK) {
         cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << "\n";
     }
 
     mergesort(aux, containeresNaoOK, 0, 3);
-
+    cout << "\n";
     for (Fiscalizacao fiscalizacao : containeresNaoOK) {
-        cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << "\n";
+        cout << fiscalizacao.container.codigo << " - " << fiscalizacao.container.ordemCadastro << " - " << fiscalizacao.diferencaPeso << "Kg" << "\n";
     }
 
     return 0;
