@@ -27,13 +27,12 @@ int32_t arredondarSimples(double numero) {
 
 // func para checar se o container ta ok
 bool containerOk(const Container& cadastrado, const Container& selecionado) {
-    if (cadastrado.cnpj != selecionado.cnpj) 
-        return false;
-    else if ((selecionado.peso >= cadastrado.peso * 1.105) || (selecionado.peso <= cadastrado.peso * 0.895))
-        return false;
-    else 
-        return true;
+    double limiteSuperior = cadastrado.peso * 1.105;
+    double limiteInferior = cadastrado.peso * 0.895;
+    return (cadastrado.cnpj == selecionado.cnpj) &&
+           (selecionado.peso <= limiteSuperior && selecionado.peso >= limiteInferior);
 }
+
 
 void separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados, Container* selecionados, int32_t qtdeSelecionados, Fiscalizacao* containeresNaoOk, int32_t& qtdeNaoOk) {
     int32_t k = 0;
