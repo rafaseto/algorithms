@@ -35,7 +35,7 @@ bool containerOk(const Container& cadastrado, const Container& selecionado) {
         return true;
 }
 
-Container separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados, Container* selecionados, int32_t qtdeSelecionados, Fiscalizacao* containeresNaoOk, int32_t& qtdeNaoOk) {
+void separaContaineresNaoOk(Container* cadastrados, int32_t qtdeCadastrados, Container* selecionados, int32_t qtdeSelecionados, Fiscalizacao* containeresNaoOk, int32_t& qtdeNaoOk) {
     int32_t k = 0;
 
     for (int32_t i =  0; i < qtdeSelecionados; i++) {
