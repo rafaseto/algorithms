@@ -60,7 +60,7 @@ int containerOk(const Container* cadastrado, const Container* selecionado) {
     double limiteSuperior = cadastrado->peso * 1.105;
     double limiteInferior = cadastrado->peso * 0.895;
     return (strcmp(cadastrado->cnpj, selecionado->cnpj) == 0) &&
-           (selecionado->peso <= limiteSuperior && selecionado->peso >= limiteInferior);
+           (selecionado->peso < limiteSuperior && selecionado->peso > limiteInferior);
 }
 
 void separaContaineresNaoOk(Container* selecionados, int qtdeSelecionados, Fiscalizacao* containeresNaoOk, int* qtdeNaoOk) {
