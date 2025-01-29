@@ -68,72 +68,27 @@ void intercalar(Fiscalizacao* vetorAux, Fiscalizacao* vetorOriginal, int32_t ini
     int32_t i2 = fimSubArr01 + 1; // Índice do segundo subarray
     int32_t k = iniSubArr01;      // Índice do vetor auxiliar
 
-
-
-
-
-
-
-
-    // func p intercalar os elementos dos subarrays ordenados
     while (i1 <= fimSubArr01 && i2 <= fimSubArr02) {
-        // CNPJ DIVERGENTE TEM PRIORIDADE
-        if (vetorOriginal[i1].prioridade < vetorOriginal[i2].prioridade)
+        if (vetorOriginal[i1].prioridade < vetorOriginal[i2].prioridade) {
             vetorAux[k++] = vetorOriginal[i1++];
-
-        // MESMO GRAU DE PRIORIDADE
-        else if (vetorOriginal[i1].prioridade == vetorOriginal[i2].prioridade)
-
-            // AMBOS COM CNPJ DIVERGENTE --> VER ORDEM DO CADASTRO
-            if (vetorOriginal[i1].prioridade == 1) {
-
-                // ORDEM DE CADASTRO MAIS PRIORITARIA 
-                if (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro){
-                    cout << vetorOriginal[i1].container.ordemCadastro;
-                    vetorAux[k++] = vetorOriginal[i1++];}
-                else 
-                    vetorAux[k++] = vetorOriginal[i2++];
-
-            }
-    
-            // AMBOS COM DIFF GRANDE DE PESO
-            else {
-                
-                // DIFERENCA DE PESO MAIOR, LOGO MAIS PRIORITARIA
+        } else if (vetorOriginal[i1].prioridade > vetorOriginal[i2].prioridade) {
+            vetorAux[k++] = vetorOriginal[i2++];
+        } else { // Mesma prioridade
+            if (vetorOriginal[i1].prioridade == 1) { // Ambos com CNPJ divergente
+                vetorAux[k++] = (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro)
+                                 ? vetorOriginal[i1++] : vetorOriginal[i2++];
+            } else { // Ambos com diferença grande de peso
                 if (vetorOriginal[i1].diferencaPeso > vetorOriginal[i2].diferencaPeso) {
                     vetorAux[k++] = vetorOriginal[i1++];
-                }
-
-                // MESMA DIFF DE PESO --> VER ORDEM DO CADASTRO
-                else if (vetorOriginal[i1].diferencaPeso == vetorOriginal[i2].diferencaPeso) {
-
-                    // ORDEM DE CADASTRO MAIS PRIORITARIA 
-                    if (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro)
-                        vetorAux[k++] = vetorOriginal[i1++];
-                    else 
-                        vetorAux[k++] = vetorOriginal[i2++];
-
-                }
-
-                // DIFERENCA DE PESO MENOR
-                else 
+                } else if (vetorOriginal[i1].diferencaPeso < vetorOriginal[i2].diferencaPeso) {
                     vetorAux[k++] = vetorOriginal[i2++];
-
+                } else { // Mesma diferença de peso
+                    vetorAux[k++] = (vetorOriginal[i1].containerCadastrado.ordemCadastro < vetorOriginal[i2].containerCadastrado.ordemCadastro)
+                                     ? vetorOriginal[i1++] : vetorOriginal[i2++];
+                }
             }
-
-        else
-            vetorAux[k++] = vetorOriginal[i2++];
+        }
     }
-
-
-
-
-
-
-
-
-
-
 
     // Copia os elementos restantes do primeiro subarray, se houver
     if (i1 <= fimSubArr01) {
