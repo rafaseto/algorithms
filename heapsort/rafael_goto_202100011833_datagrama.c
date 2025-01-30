@@ -104,8 +104,16 @@ int main(int argc, char* argv[]) {
 
         heapsort(packets, count);
 
-        for (int32_t a = 0; a < count; a++) {
-            fprintf(output, "%d ", packets[a].number);
+        int32_t print_index = 0;
+        while (print_index < count && packets[print_index].number == expected_packet) {
+            fprintf(output, "%d ", packets[print_index].number);
+
+            expected_packet++;
+            print_index++;
+        }
+        count -= print_index;
+        for (int32_t i = 0; i < count; i++) {
+            packets[i] = packets[i + print_index];
         }
         fprintf(output, "\n");
     }
