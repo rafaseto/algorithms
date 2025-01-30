@@ -1,6 +1,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
+
+typedef struct {
+    int32_t number;
+    unsigned char data[512];
+    int32_t size;
+} Packet;
 
 void swap(int32_t arr[], uint32_t i, uint32_t j) {
     int32_t temp = arr[i];
@@ -44,27 +52,68 @@ void heapsort(int32_t arr[], uint32_t n) {
     }
 }
 
-int main() {
-    int32_t arr[] = {50, 23, 98, 12, 76, 34, 65, 87, 14, 3,
-    91, 45, 67, 29, 81, 55, 22, 7, 40, 62,
-    37, 84, 19, 73, 10, 99, 30, 1, 56, 88,
-    16, 92, 48, 5, 68, 25, 31, 79, 41, 60,
-    8, 96, 47, 33, 77, 9, 100, 6, 85, 20};
-    uint32_t n = sizeof(arr) / sizeof(arr[0]);
+int main(int argc, char* argv[]) {
+    if (argc < 3) {
+        fprintf(stderr, "Uso: %s <arquivo_entrada> <arquivo_saida>\n", argv[0]);
+        return 1;
+    }
+    
+    FILE* input = fopen(argv[1], "r");
+    FILE* output = fopen(argv[2], "w");
+    if (!input || !output) {
+        fprintf(stderr, "Erro ao abrir os arquivos.\n");
+        return 1;
+    }
+    
+    int32_t num_packets;
+    int32_t read_interval;
+    fscanf(input, "%d", &num_packets);
+    fscanf(input, "%d", &read_interval);
+    fprintf(output, "%d ", num_packets);
+    fprintf(output, "%d\n", read_interval);
 
-    printf("Original arr:\n");
-    for (int32_t i = 0; i < n; i++) {
-        printf("%d ", arr[i]);
+    Packet packets[num_packets];
+    uint32_t received[num_packets];
+    int32_t count = 0;
+    int32_t expected_packet = 0;
+
+    for (int32_t i = 0; i < num_packets; i++) {
+        received[i] = 0;
     }
 
-    heapsort(arr, n);
+    while (num_packets > 0) {
+        for (int32_t i = 0; i < read_interval && num_packets > 0; i++, num_packets--) {
+            int32_t packet_number, packet_size;
+            fscanf(input, "%d", &packet_number);
+            fscanf(input, "%d", &packet_size);
+            fprintf(output, "%d ", packet_number);
+            fprintf(output, "%d ", packet_size);
 
-    printf("\n");
-    printf("Ordered arr:\n");
-    for (int32_t i = 0; i < n; i++) {
-        printf("%d ", arr[i]);
+            Packet curr_packet;
+            curr_packet.number = packet_number;
+            curr_packet.size = packet_size;
+            
+            for (int j = 0; j < packet_size; j++) {
+                unsigned int temp;
+                if (fscanf(input, "%2x", &temp) != 1) {  // Lê dois caracteres hexadecimais
+                    printf("Erro ao ler os dados hexadecimais.\n");
+                    return 1;
+                }   
+                curr_packet.data[j] = (unsigned char)temp;
+            }
+            
+            for (int32_t k = 0; k < packet_size; k++) {
+                fprintf(output, "%02X ", curr_packet.data[k]);
+            }
+            fprintf(output, "\n");
+
+            packets[count++] = curr_packet;
+            received[packet_number] = 1;
+        }
     }
 
+    fclose(input);
+    fclose(output);
 
     return 0;
 }
