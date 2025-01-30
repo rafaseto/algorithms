@@ -105,12 +105,17 @@ int main(int argc, char* argv[]) {
         heapsort(packets, count);
 
         int32_t print_index = 0;
+        fprintf(output, "|");
         while (print_index < count && packets[print_index].number == expected_packet) {
-            fprintf(output, "%d ", packets[print_index].number);
+            for (int32_t j = 0; j < packets[print_index].size - 1; j++) {
+                fprintf(output, "%02X,", packets[print_index].data[j]);
+            }
+            fprintf(output, "%02X|",  packets[print_index].data[packets[print_index].size - 1]);
 
             expected_packet++;
             print_index++;
         }
+
         count -= print_index;
         for (int32_t i = 0; i < count; i++) {
             packets[i] = packets[i + print_index];
