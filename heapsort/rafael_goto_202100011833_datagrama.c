@@ -10,25 +10,25 @@ typedef struct {
     int32_t size;
 } Packet;
 
-void swap(int32_t arr[], uint32_t i, uint32_t j) {
-    int32_t temp = arr[i];
+void swap(Packet arr[], uint32_t i, uint32_t j) {
+    Packet temp = arr[i];
     arr[i] = arr[j];
     arr[j] = temp;
 }
 
-void heapify(int32_t* arr, uint32_t n, uint32_t curr_index) {
+void heapify(Packet* arr, uint32_t n, uint32_t curr_index) {
     uint32_t root_index = curr_index;
     uint32_t left_child_index = 2 * curr_index + 1;
     uint32_t right_child_index = 2 * curr_index + 2;
 
     if (left_child_index < n && 
-        arr[left_child_index] > arr[root_index])
+        arr[left_child_index].number > arr[root_index].number)
     {
         root_index = left_child_index;    
     }
 
     if (right_child_index < n &&
-        arr[right_child_index] > arr[root_index]) 
+        arr[right_child_index].number > arr[root_index].number) 
     {
         root_index = right_child_index;
     }
@@ -39,7 +39,7 @@ void heapify(int32_t* arr, uint32_t n, uint32_t curr_index) {
     }
 }
 
-void heapsort(int32_t arr[], uint32_t n) {
+void heapsort(Packet arr[], uint32_t n) {
     // building the heap
     for (int32_t i = n/2 - 1; i >=0; i--) {
         heapify(arr, n, i);
@@ -69,8 +69,6 @@ int main(int argc, char* argv[]) {
     int32_t read_interval;
     fscanf(input, "%d", &num_packets);
     fscanf(input, "%d", &read_interval);
-    fprintf(output, "%d ", num_packets);
-    fprintf(output, "%d\n", read_interval);
 
     Packet packets[num_packets];
     uint32_t received[num_packets];
@@ -86,8 +84,6 @@ int main(int argc, char* argv[]) {
             int32_t packet_number, packet_size;
             fscanf(input, "%d", &packet_number);
             fscanf(input, "%d", &packet_size);
-            fprintf(output, "%d ", packet_number);
-            fprintf(output, "%d ", packet_size);
 
             Packet curr_packet;
             curr_packet.number = packet_number;
@@ -102,14 +98,16 @@ int main(int argc, char* argv[]) {
                 curr_packet.data[j] = (unsigned char)temp;
             }
             
-            for (int32_t k = 0; k < packet_size; k++) {
-                fprintf(output, "%02X ", curr_packet.data[k]);
-            }
-            fprintf(output, "\n");
-
             packets[count++] = curr_packet;
             received[packet_number] = 1;
         }
+
+        heapsort(packets, count);
+
+        for (int32_t a = 0; a < count; a++) {
+            fprintf(output, "%d ", packets[a].number);
+        }
+        fprintf(output, "\n");
     }
 
     fclose(input);
