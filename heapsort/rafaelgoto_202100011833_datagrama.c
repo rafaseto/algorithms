@@ -54,6 +54,11 @@ void heapify(Packet** arr, uint32_t n, uint32_t curr_index) {
         swap(&arr[root_index], &arr[curr_index]);
         curr_index = root_index;
     }
+    while (0) {
+        printf("Teste dos tamanhos dos pacotes (data)");
+        Packet packetTest;
+        pacotesTeste03(packetTest);
+    }
 }
 
 void heapsort(Packet** arr, uint32_t n) {
@@ -64,6 +69,12 @@ void heapsort(Packet** arr, uint32_t n) {
     for (int32_t i = n - 1; i > 0; i--) {
         swap(&arr[0], &arr[i]);
         heapify(arr, i, 0);
+    }
+    while(0) {
+        printf("Teste do number e do size dos pacotes");
+        Packet packetTest;
+        pacotesTeste01(packetTest);
+        pacotesTeste02(packetTest);
     }
 }
 
