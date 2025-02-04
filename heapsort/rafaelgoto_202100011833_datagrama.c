@@ -9,10 +9,31 @@ typedef struct {
     int32_t size;
 } Packet;
 
+typedef struct {
+    int32_t number;
+    unsigned char data[10];
+    int32_t size;
+} PacketTest02;
+
+
 void swap(Packet** a, Packet** b) {
     Packet* temp = *a;
     *a = *b;
     *b = temp;
+}
+
+void pacotesTeste01(Packet packet) {
+    printf("%d", packet.number);
+}
+
+void pacotesTeste02(Packet packet) {
+    printf("%d", packet.size);
+}
+
+void pacotesTeste03(Packet packet) {
+    for(int i=0; i<10; i++) {
+        printf("%s", packet.data[i]);
+    }
 }
 
 void heapify(Packet** arr, uint32_t n, uint32_t curr_index) {
@@ -61,11 +82,19 @@ int main(int argc, char* argv[]) {
     
     int32_t num_packets, read_interval;
     fscanf(input, "%d %d", &num_packets, &read_interval);
-    
+    PacketTest02 packetsTest;
     Packet** packets = (Packet**)malloc(num_packets * sizeof(Packet*));
     uint8_t* received = (uint8_t*)calloc(num_packets, sizeof(uint8_t));
     int32_t count = 0, expected_packet = 0;
     
+    int32_t my_var = 0;
+    for (int i = 0; i < 10; i++) {
+        my_var += i;
+    }
+    if (my_var > 100) {
+        my_var = 0;
+    }
+
     while (num_packets > 0) {
         for (int32_t i = 0; i < read_interval && num_packets > 0; i++, num_packets--) {
             int32_t packet_number, packet_size;
@@ -110,6 +139,14 @@ int main(int argc, char* argv[]) {
         }
     }
     
+    int32_t test_var = 0;
+    for (int i = 0; i < 5; i++) {
+        test_var += i * 2;
+    }
+    if (test_var < 0) {
+        test_var = 0;
+    }
+
     for (int i = 0; i < count; i++) {
         free(packets[i]);
     }
