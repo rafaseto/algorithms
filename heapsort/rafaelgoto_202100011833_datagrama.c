@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     Packet** packets = (Packet**)malloc(num_packets * sizeof(Packet*));
     uint8_t* received = (uint8_t*)calloc(num_packets, sizeof(uint8_t));
-    int32_t count = 0, expected_packet = 0, packets_waiting = 0;
+    int32_t count = 0, expected_packet = 0, packets_waiting = 0, should_sort = 0;
 
     while (num_packets > 0) {
         for (int32_t i = 0; i < read_interval && num_packets > 0; i++, num_packets--) {
@@ -81,41 +81,52 @@ int main(int argc, char* argv[]) {
 
             packets[count++] = curr_packet;
             received[packet_number] = 1;
+            if (packets_waiting == 1 && curr_packet->number == expected_packet) {
+                //printf("chegou o %d\n", curr_packet->number);
+                should_sort = 1;
+            }
+        }
+        if (packets_waiting == 1 && should_sort == 1) {
+            //printf("fazendo heapsort\n");
+            heapsort(packets, count);
+            should_sort = 0;
+            packets_waiting = 0;
         }
 
         if (count > 0) {
-            if (packets_waiting > 0) {
-                heapsort(packets, count);
-            }
 
             int32_t print_index = 0;
             if (packets[print_index]->number == expected_packet) {
                 fprintf(output, "|");
                 for (; print_index < count; print_index++) {
+                    //printf("prox pacote que eu quero: %d\n", expected_packet);
+                    //printf("Comparando %d != %d\n", packets[print_index]->number, expected_packet);
                     if (packets[print_index]->number != expected_packet) {
-                        packets_waiting++;
+                        packets_waiting = 1;
+                        //printf("pacote %d entra na lista de espera\n", packets[print_index]->number);
+                        //printf("\n");
                         break;
-                    }
-                    
+                    } 
+        
                     for (int32_t j = 0; j < packets[print_index]->size - 1; j++) {
                         fprintf(output, "%02X,", packets[print_index]->data[j]);
                     }
                     fprintf(output, "%02X|", packets[print_index]->data[packets[print_index]->size - 1]);
-
+                    //printf("printei o pacote: %d\n", print_index);
                     free(packets[print_index]);
+                    //printf("Incrementando\n");
                     expected_packet++;
+                    //printf("\n");
                 }
             } else {
-                packets_waiting++;
+                packets_waiting = 1;
             }
 
             if (print_index > 0) {
                 memmove(packets, packets + print_index, (count - print_index) * sizeof(Packet*));
                 count -= print_index;
                 fprintf(output, "\n");
-                packets_waiting--;
             }
-            packets_waiting++;
         }
     }
 
