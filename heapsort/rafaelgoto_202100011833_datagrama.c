@@ -127,11 +127,13 @@ int main(int argc, char* argv[]) {
             received[packet_number] = 1;
         }
 
-        // Faz a ordenação
-        heapsort(packets, count);
+        if (count > 0 && packets[0]->number != expected_packet) {
+            heapsort(packets, count);
+        }
+
         int32_t print_index = 0;
 
-        if (packets[print_index]->number == expected_packet) {
+        if (count > 0 && packets[0]->number == expected_packet) {
             fprintf(output, "|");
             while (print_index < count && packets[print_index]->number == expected_packet) {
                 for (int32_t j = 0; j < packets[print_index]->size - 1; j++) {
@@ -140,10 +142,10 @@ int main(int argc, char* argv[]) {
                 fprintf(output, "%02X|", packets[print_index]->data[packets[print_index]->size - 1]);
                 expected_packet++;
 
-                // Libera a memória do pacote processado
                 free(packets[print_index]);
                 print_index++;
             }
+
             count -= print_index;
             memmove(packets, packets + print_index, count * sizeof(Packet*));
             fprintf(output, "\n");
