@@ -32,7 +32,7 @@ void pacotesTeste02(Packet packet) {
 
 void pacotesTeste03(Packet packet) {
     for(int i=0; i<10; i++) {
-        printf("%s", packet.data[i]);
+        printf("%d", packet.data[i]);
     }
 }
 
@@ -54,11 +54,6 @@ void heapify(Packet** arr, uint32_t n, uint32_t curr_index) {
         swap(&arr[root_index], &arr[curr_index]);
         curr_index = root_index;
     }
-    while (0) {
-        printf("Teste dos tamanhos dos pacotes (data)");
-        Packet packetTest;
-        pacotesTeste03(packetTest);
-    }
 }
 
 void heapsort(Packet** arr, uint32_t n) {
@@ -69,12 +64,6 @@ void heapsort(Packet** arr, uint32_t n) {
     for (int32_t i = n - 1; i > 0; i--) {
         swap(&arr[0], &arr[i]);
         heapify(arr, i, 0);
-    }
-    while(0) {
-        printf("Teste do number e do size dos pacotes");
-        Packet packetTest;
-        pacotesTeste01(packetTest);
-        pacotesTeste02(packetTest);
     }
 }
 
@@ -97,14 +86,6 @@ int main(int argc, char* argv[]) {
     Packet** packets = (Packet**)malloc(num_packets * sizeof(Packet*));
     uint8_t* received = (uint8_t*)calloc(num_packets, sizeof(uint8_t));
     int32_t count = 0, expected_packet = 0;
-    
-    int32_t my_var = 0;
-    for (int i = 0; i < 10; i++) {
-        my_var += i;
-    }
-    if (my_var > 100) {
-        my_var = 0;
-    }
 
     while (num_packets > 0) {
         for (int32_t i = 0; i < read_interval && num_packets > 0; i++, num_packets--) {
@@ -150,14 +131,6 @@ int main(int argc, char* argv[]) {
             memmove(packets, packets + print_index, count * sizeof(Packet*));
             fprintf(output, "\n");
         }
-    }
-    
-    int32_t test_var = 0;
-    for (int i = 0; i < 5; i++) {
-        test_var += i * 2;
-    }
-    if (test_var < 0) {
-        test_var = 0;
     }
 
     for (int i = 0; i < count; i++) {
