@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     Packet** packets = (Packet**)malloc(num_packets * sizeof(Packet*));
     uint8_t* received = (uint8_t*)calloc(num_packets, sizeof(uint8_t));
-    int32_t count = 0, expected_packet = 0;
+    int32_t count = 0, expected_packet = 0, packets_waiting = 0;
 
     while (num_packets > 0) {
         for (int32_t i = 0; i < read_interval && num_packets > 0; i++, num_packets--) {
@@ -84,21 +84,29 @@ int main(int argc, char* argv[]) {
         }
 
         if (count > 0) {
-            heapsort(packets, count);
+            if (packets_waiting > 0) {
+                heapsort(packets, count);
+            }
 
             int32_t print_index = 0;
             if (packets[print_index]->number == expected_packet) {
                 fprintf(output, "|");
-            }
-            while (print_index < count && packets[print_index]->number == expected_packet) {
-                for (int32_t j = 0; j < packets[print_index]->size - 1; j++) {
-                    fprintf(output, "%02X,", packets[print_index]->data[j]);
-                }
-                fprintf(output, "%02X|", packets[print_index]->data[packets[print_index]->size - 1]);
+                for (; print_index < count; print_index++) {
+                    if (packets[print_index]->number != expected_packet) {
+                        packets_waiting++;
+                        break;
+                    }
+                    
+                    for (int32_t j = 0; j < packets[print_index]->size - 1; j++) {
+                        fprintf(output, "%02X,", packets[print_index]->data[j]);
+                    }
+                    fprintf(output, "%02X|", packets[print_index]->data[packets[print_index]->size - 1]);
 
-                free(packets[print_index]);
-                expected_packet++;
-                print_index++;
+                    free(packets[print_index]);
+                    expected_packet++;
+                }
+            } else {
+                packets_waiting++;
             }
 
             if (print_index > 0) {
