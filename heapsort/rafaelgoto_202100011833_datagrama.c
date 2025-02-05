@@ -113,7 +113,9 @@ int main(int argc, char* argv[]) {
                 memmove(packets, packets + print_index, (count - print_index) * sizeof(Packet*));
                 count -= print_index;
                 fprintf(output, "\n");
+                packets_waiting--;
             }
+            packets_waiting++;
         }
     }
 
