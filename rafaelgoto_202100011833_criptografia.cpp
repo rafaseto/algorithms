@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <string>
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -10,23 +9,29 @@
 
 using namespace std;
 
+static const bool ios_sync_off = [](){
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    return true;
+}();
+
 inline int myMin(int a, int b) { return (a < b) ? a : b; }
 
 // ===== IMPLEMENTAÇÃO DE BIGINT (operações com números grandes) =====
 struct BigInt {
-    // Representa o número em little‑endian: word 0 é o LSB.
+    // Número representado em little‑endian: word0 é o LSB.
     unsigned int words[130];
     int size; // número de palavras utilizadas (mínimo 1)
 };
 
-void initBigInt(BigInt &a) {
+inline void initBigInt(BigInt &a) {
     memset(a.words, 0, sizeof(a.words));
     a.size = 1;
 }
 
-void fromHex(BigInt &a, const char *hex) {
+inline void fromHex(BigInt &a, const char *hex) {
     initBigInt(a);
-    int len = strlen(hex);
+    int len = (int)strlen(hex);
     a.size = (len + 7) / 8;
     for (int i = 0; i < a.size; i++)
         a.words[i] = 0;
@@ -35,10 +40,9 @@ void fromHex(BigInt &a, const char *hex) {
         int start = (pos - 8 < 0) ? 0 : pos - 8;
         int chunkSize = pos - start;
         char buf[9];
-        for (int j = 0; j < chunkSize; j++)
-            buf[j] = hex[start + j];
+        memcpy(buf, hex + start, chunkSize);
         buf[chunkSize] = '\0';
-        a.words[i] = (unsigned int)strtoul(buf, NULL, 16);
+        a.words[i] = (unsigned int)strtoul(buf, nullptr, 16);
         pos = start;
     }
     while(a.size > 1 && a.words[a.size - 1] == 0)
@@ -47,7 +51,8 @@ void fromHex(BigInt &a, const char *hex) {
 
 string toHex(const BigInt &a, int expectedHex) {
     int wordsNeeded = (expectedHex + 7) / 8;
-    string result = "";
+    string result;
+    result.reserve(wordsNeeded * 8);
     for (int i = wordsNeeded - 1; i >= 0; i--) {
         char buf[9];
         int width = (i == wordsNeeded - 1 && (expectedHex % 8 != 0)) ? (expectedHex % 8) : 8;
@@ -58,7 +63,7 @@ string toHex(const BigInt &a, int expectedHex) {
     return result;
 }
 
-int compareBigInt(const BigInt &a, const BigInt &b) {
+inline int compareBigInt(const BigInt &a, const BigInt &b) {
     if(a.size > b.size) return 1;
     if(a.size < b.size) return -1;
     for (int i = a.size - 1; i >= 0; i--) {
@@ -68,7 +73,7 @@ int compareBigInt(const BigInt &a, const BigInt &b) {
     return 0;
 }
 
-void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+inline void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     int maxSize = (a.size > b.size) ? a.size : b.size;
     unsigned long long carry = 0;
     for (int i = 0; i < maxSize; i++){
@@ -87,7 +92,7 @@ void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     }
 }
 
-void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+inline void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long borrow = 0;
     res.size = a.size;
     for(int i = 0; i < a.size; i++){
@@ -99,7 +104,7 @@ void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
         res.size--;
 }
 
-void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+inline void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long temp[130] = {0};
     int resSize = a.size + b.size;
     for (int i = 0; i < a.size; i++){
@@ -118,14 +123,14 @@ void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
         res.words[i] = (unsigned int)temp[i];
 }
 
-int getBit(const BigInt &a, int pos) {
+inline int getBit(const BigInt &a, int pos) {
     int word = pos / 32;
     int bit = pos % 32;
     if(word >= a.size) return 0;
     return (a.words[word] >> bit) & 1;
 }
 
-void shiftLeftOne(BigInt &a) {
+inline void shiftLeftOne(BigInt &a) {
     unsigned int carry = 0;
     for (int i = 0; i < a.size; i++){
         unsigned long long shifted = ((unsigned long long)a.words[i] << 1) | carry;
@@ -138,7 +143,7 @@ void shiftLeftOne(BigInt &a) {
     }
 }
 
-void shiftRightOne(BigInt &a) {
+inline void shiftRightOne(BigInt &a) {
     unsigned int carry = 0;
     for (int i = a.size - 1; i >= 0; i--){
         unsigned int newCarry = a.words[i] & 1;
@@ -149,7 +154,7 @@ void shiftRightOne(BigInt &a) {
         a.size--;
 }
 
-bool isZero(const BigInt &a) {
+inline bool isZero(const BigInt &a) {
     return (a.size == 1 && a.words[0] == 0);
 }
 
@@ -175,8 +180,7 @@ void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
 void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, const BigInt &mod) {
     BigInt result, A, B;
     initBigInt(result);
-    A = a;
-    modBigInt(A, mod, A);
+    A = a; modBigInt(A, mod, A);
     B = b;
     int totalBits = B.size * 32;
     for (int i = 0; i < totalBits; i++) {
@@ -275,7 +279,7 @@ static const unsigned char Rcon[11] = {
   0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
 };
 
-void rotWord(unsigned char word[4]) {
+inline void rotWord(unsigned char word[4]) {
     unsigned char temp = word[0];
     word[0] = word[1];
     word[1] = word[2];
@@ -283,7 +287,7 @@ void rotWord(unsigned char word[4]) {
     word[3] = temp;
 }
 
-void subWord(unsigned char word[4]) {
+inline void subWord(unsigned char word[4]) {
     for (int i = 0; i < 4; i++)
         word[i] = sbox[word[i]];
 }
@@ -291,9 +295,10 @@ void subWord(unsigned char word[4]) {
 void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys[], int &nr) {
     int Nk = keyLen / 4;
     nr = (keyLen == 16) ? 10 : (keyLen == 24 ? 12 : 14);
-    int Nb = 4;
-    int totalWords = Nb * (nr + 1);
+    const int Nb = 4;
+    const int totalWords = Nb * (nr + 1);
     unsigned char temp[4];
+    // Cópia direta da chave inicial
     for (int i = 0; i < Nk; i++) {
         roundKeys[4*i + 0] = key[4*i + 0];
         roundKeys[4*i + 1] = key[4*i + 1];
@@ -301,10 +306,7 @@ void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys
         roundKeys[4*i + 3] = key[4*i + 3];
     }
     for (int i = Nk; i < totalWords; i++) {
-        temp[0] = roundKeys[4*(i-1) + 0];
-        temp[1] = roundKeys[4*(i-1) + 1];
-        temp[2] = roundKeys[4*(i-1) + 2];
-        temp[3] = roundKeys[4*(i-1) + 3];
+        memcpy(temp, roundKeys + 4 * (i - 1), 4);
         if (i % Nk == 0) {
             rotWord(temp);
             subWord(temp);
@@ -312,24 +314,22 @@ void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys
         } else if (Nk > 6 && (i % Nk) == 4) {
             subWord(temp);
         }
-        roundKeys[4*i + 0] = roundKeys[4*(i - Nk) + 0] ^ temp[0];
-        roundKeys[4*i + 1] = roundKeys[4*(i - Nk) + 1] ^ temp[1];
-        roundKeys[4*i + 2] = roundKeys[4*(i - Nk) + 2] ^ temp[2];
-        roundKeys[4*i + 3] = roundKeys[4*(i - Nk) + 3] ^ temp[3];
+        for (int j = 0; j < 4; j++)
+            roundKeys[4*i + j] = roundKeys[4*(i - Nk) + j] ^ temp[j];
     }
 }
 
-void SubBytes(unsigned char state[16]) {
+inline void SubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = sbox[state[i]];
 }
 
-void InvSubBytes(unsigned char state[16]) {
+inline void InvSubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = invSbox[state[i]];
 }
 
-void ShiftRows(unsigned char state[16]) {
+inline void ShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
     state[1]  = temp[5];
@@ -348,7 +348,7 @@ void ShiftRows(unsigned char state[16]) {
     state[15] = temp[11];
 }
 
-void InvShiftRows(unsigned char state[16]) {
+inline void InvShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
     state[1]  = temp[13];
@@ -367,14 +367,14 @@ void InvShiftRows(unsigned char state[16]) {
     state[15] = temp[3];
 }
 
-unsigned char xtime(unsigned char x) {
+inline unsigned char xtime(unsigned char x) {
     return ((x << 1) ^ ((x >> 7) & 1 ? 0x1b : 0));
 }
 
-unsigned char multiplyGF(unsigned char a, unsigned char b) {
+inline unsigned char multiplyGF(unsigned char a, unsigned char b) {
     unsigned char res = 0;
     for (int i = 0; i < 8; i++) {
-        if(b & 1)
+        if (b & 1)
             res ^= a;
         unsigned char hi_bit = a & 0x80;
         a <<= 1;
@@ -385,7 +385,7 @@ unsigned char multiplyGF(unsigned char a, unsigned char b) {
     return res;
 }
 
-void MixColumns(unsigned char state[16]) {
+inline void MixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
         unsigned char a0 = state[col+0], a1 = state[col+1],
@@ -397,7 +397,7 @@ void MixColumns(unsigned char state[16]) {
     }
 }
 
-void InvMixColumns(unsigned char state[16]) {
+inline void InvMixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
         unsigned char a0 = state[col+0], a1 = state[col+1],
@@ -409,7 +409,7 @@ void InvMixColumns(unsigned char state[16]) {
     }
 }
 
-void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
+inline void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
     for (int i = 0; i < 16; i++)
         state[i] ^= roundKey[i];
 }
@@ -455,12 +455,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    ifstream fin(argv[1], ios::in);
+    ifstream fin(argv[1]);
     if(!fin.is_open()){
         cerr << "Erro ao abrir o arquivo de entrada." << endl;
         return 1;
     }
-    ofstream fout(argv[2], ios::out);
+    ofstream fout(argv[2]);
     if(!fout.is_open()){
         cerr << "Erro ao abrir o arquivo de saida." << endl;
         return 1;
@@ -469,7 +469,7 @@ int main(int argc, char* argv[]) {
     int n;
     fin >> n;
     string dummy;
-    getline(fin, dummy);
+    getline(fin, dummy); // descarta o resto da linha
     
     // Chave AES global
     unsigned char aesKey[32];
@@ -488,6 +488,7 @@ int main(int argc, char* argv[]) {
         iss >> command;
         
         if(command == "dh") {
+            // Comando Diffie‑Hellman
             string a_str, b_str, g_str, p_str;
             iss >> a_str >> b_str >> g_str >> p_str;
             BigInt A, B, G, P;
@@ -502,44 +503,45 @@ int main(int argc, char* argv[]) {
             BigInt s_bn;
             modExpBigInt(s_bn, B_pub, A, P);
             
-            int keyHexDigits = a_str.size();
+            int keyHexDigits = (int)a_str.size();
             aesKeyLen = keyHexDigits / 2;
             string s_hex = toHex(s_bn, keyHexDigits);
             for (int j = 0; j < aesKeyLen; j++){
                 string byteStr = s_hex.substr(j*2, 2);
-                aesKey[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
+                aesKey[j] = (unsigned char) strtoul(byteStr.c_str(), nullptr, 16);
             }
             keySet = true;
             KeyExpansion(aesKey, aesKeyLen, roundKeys, nr);
             fout << "s=" << s_hex << "\n";
         }
         else if(command == "d") {
+            // Comando de descriptografia
             string cipherHex;
             iss >> cipherHex;
             if (cipherHex.size() % 32 != 0) {
-                int zeros = 32 - (cipherHex.size() % 32);
+                int zeros = 32 - (int)(cipherHex.size() % 32);
                 cipherHex = string(zeros, '0') + cipherHex;
             }
-            int cipherLen = cipherHex.size() / 2;
+            int cipherLen = (int)cipherHex.size() / 2;
             unsigned char *cipherBytes = new unsigned char[cipherLen];
             for (int j = 0; j < cipherLen; j++){
-                string byteStr = cipherHex.substr(j*2, 2);
-                cipherBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
+                cipherBytes[j] = (unsigned char) strtoul(cipherHex.substr(j*2, 2).c_str(), nullptr, 16);
             }
             unsigned char *plainBytes = new unsigned char[cipherLen];
             
-            // Paralelização da descriptografia:
-            unsigned int threadCount = std::thread::hardware_concurrency();
+            // Paralelização da descriptografia
+            unsigned int threadCount = thread::hardware_concurrency();
             if(threadCount == 0)
-                threadCount = 8; // valor default
+                threadCount = 4; // valor default
             int blockCount = cipherLen / 16;
             int blocksPerThread = (blockCount + threadCount - 1) / threadCount;
             
-            std::thread *threads = new std::thread[threadCount];
+            thread* threads = new thread[threadCount];
             for (unsigned int t = 0; t < threadCount; t++){
                 int startBlock = t * blocksPerThread;
                 int endBlock = myMin(startBlock + blocksPerThread, blockCount);
-                threads[t] = std::thread([=]() {
+                // Capturamos por referência os arrays e variáveis imutáveis necessárias
+                threads[t] = thread([startBlock, endBlock, cipherBytes, plainBytes, nr, roundKeys]() {
                     for (int b = startBlock; b < endBlock; b++){
                         int offset = b * 16;
                         AES_Decrypt_Block(cipherBytes + offset, plainBytes + offset, roundKeys, nr);
@@ -551,43 +553,46 @@ int main(int argc, char* argv[]) {
             }
             delete[] threads;
             
-            string plainHex = "";
-            char buf[3];
+            // Monta string de saída usando buffer para evitar muitas concatenações
+            int outSize = cipherLen * 2;
+            char* plainHexBuffer = new char[outSize + 1];
             for (int j = 0; j < cipherLen; j++){
-                sprintf(buf, "%02X", plainBytes[j]);
-                plainHex += buf;
+                sprintf(plainHexBuffer + j*2, "%02X", plainBytes[j]);
             }
-            fout << "m=" << plainHex << "\n";
+            plainHexBuffer[outSize] = '\0';
+            fout << "m=" << plainHexBuffer << "\n";
+            
             delete[] cipherBytes;
             delete[] plainBytes;
+            delete[] plainHexBuffer;
         }
         else if(command == "e") {
+            // Comando de encriptação
             string plainHex;
             iss >> plainHex;
             if (plainHex.size() % 32 != 0) {
-                int zeros = 32 - (plainHex.size() % 32);
+                int zeros = 32 - (int)(plainHex.size() % 32);
                 plainHex = string(zeros, '0') + plainHex;
             }
-            int plainLen = plainHex.size() / 2;
+            int plainLen = (int)plainHex.size() / 2;
             unsigned char *plainBytes = new unsigned char[plainLen];
             for (int j = 0; j < plainLen; j++){
-                string byteStr = plainHex.substr(j*2, 2);
-                plainBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
+                plainBytes[j] = (unsigned char) strtoul(plainHex.substr(j*2, 2).c_str(), nullptr, 16);
             }
             unsigned char *cipherBytes = new unsigned char[plainLen];
             
             // Paralelização da encriptação:
-            unsigned int threadCount = std::thread::hardware_concurrency();
+            unsigned int threadCount = thread::hardware_concurrency();
             if(threadCount == 0)
                 threadCount = 4;
             int blockCount = plainLen / 16;
             int blocksPerThread = (blockCount + threadCount - 1) / threadCount;
             
-            std::thread *threads = new std::thread[threadCount];
+            thread* threads = new thread[threadCount];
             for (unsigned int t = 0; t < threadCount; t++){
                 int startBlock = t * blocksPerThread;
                 int endBlock = myMin(startBlock + blocksPerThread, blockCount);
-                threads[t] = std::thread([=]() {
+                threads[t] = thread([startBlock, endBlock, plainBytes, cipherBytes, nr, roundKeys]() {
                     for (int b = startBlock; b < endBlock; b++){
                         int offset = b * 16;
                         AES_Encrypt_Block(plainBytes + offset, cipherBytes + offset, roundKeys, nr);
@@ -599,15 +604,17 @@ int main(int argc, char* argv[]) {
             }
             delete[] threads;
             
-            string cipherOut = "";
-            char buf[3];
+            int outSize = plainLen * 2;
+            char* cipherHexBuffer = new char[outSize + 1];
             for (int j = 0; j < plainLen; j++){
-                sprintf(buf, "%02X", cipherBytes[j]);
-                cipherOut += buf;
+                sprintf(cipherHexBuffer + j*2, "%02X", cipherBytes[j]);
             }
-            fout << "c=" << cipherOut << "\n";
+            cipherHexBuffer[outSize] = '\0';
+            fout << "c=" << cipherHexBuffer << "\n";
+            
             delete[] plainBytes;
             delete[] cipherBytes;
+            delete[] cipherHexBuffer;
         }
     }
     
