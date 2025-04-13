@@ -10,30 +10,24 @@
 using namespace std;
 
 /* ===== IMPLEMENTAÇÃO DE BIGINT (operações com números grandes) ===== */
-// Representa um número grande com até 2048 bits (e resultados de multiplicação até ~4096 bits).
 struct BigInt {
-    // Cada “palavra” tem 32 bits; armazenamos em little-endian (word 0 = LSB)
-    unsigned int words[130]; // tamanho suficiente para resultados intermediários
-    int size; // número de palavras utilizadas (pelo menos 1)
+    // Representa o número em little‑endian: word 0 é o LSB.
+    unsigned int words[130];
+    int size; // número de palavras utilizadas (mínimo 1)
 };
 
-// Inicializa o BigInt para zero.
-void initBigInt(BigInt &a) {
+static inline void initBigInt(BigInt &a) {
     memset(a.words, 0, sizeof(a.words));
     a.size = 1;
 }
 
-// Converte uma string hexadecimal para BigInt.
-// A interpretação é feita considerando a string em ordem “big‑endian” (mais significativos à esquerda)
-// e o resultado é armazenado em little‑endian.
-void fromHex(BigInt &a, const char *hex) {
+static inline void fromHex(BigInt &a, const char *hex) {
     initBigInt(a);
-    int len = strlen(hex);
-    // Cada palavra terá até 8 dígitos hexadecimais (32 bits)
+    int len = (int)strlen(hex);
     a.size = (len + 7) / 8;
-    for (int i = 0; i < a.size; i++) {
+    // Limpa as palavras (mesmo que init já tenha zerado todo o array)
+    for (int i = 0; i < a.size; i++)
         a.words[i] = 0;
-    }
     int pos = len;
     for (int i = 0; i < a.size; i++) {
         int start = (pos - 8 < 0) ? 0 : pos - 8;
@@ -45,21 +39,16 @@ void fromHex(BigInt &a, const char *hex) {
         a.words[i] = (unsigned int)strtoul(buf, NULL, 16);
         pos = start;
     }
-    // Remove palavras desnecessárias (se todas zero nas posições mais altas)
     while(a.size > 1 && a.words[a.size - 1] == 0)
         a.size--;
 }
 
-// Converte o BigInt em string hexadecimal com exatamente expectedHex dígitos,
-// preenchendo com zeros à esquerda se necessário.
-string toHex(const BigInt &a, int expectedHex) {
+static inline string toHex(const BigInt &a, int expectedHex) {
     int wordsNeeded = (expectedHex + 7) / 8;
     string result = "";
+    char buf[9];
     for (int i = wordsNeeded - 1; i >= 0; i--) {
-        char buf[9];
-        int width = 8;
-        if (i == wordsNeeded - 1 && (expectedHex % 8 != 0))
-            width = expectedHex % 8;
+        int width = (i == wordsNeeded - 1 && (expectedHex % 8 != 0)) ? (expectedHex % 8) : 8;
         unsigned int w = (i < a.size ? a.words[i] : 0);
         sprintf(buf, "%0*X", width, w);
         result += buf;
@@ -67,8 +56,7 @@ string toHex(const BigInt &a, int expectedHex) {
     return result;
 }
 
-// Compara dois BigInts: retorna 1 se a > b, -1 se a < b e 0 se iguais.
-int compareBigInt(const BigInt &a, const BigInt &b) {
+static inline int compareBigInt(const BigInt &a, const BigInt &b) {
     if(a.size > b.size) return 1;
     if(a.size < b.size) return -1;
     for (int i = a.size - 1; i >= 0; i--) {
@@ -78,8 +66,7 @@ int compareBigInt(const BigInt &a, const BigInt &b) {
     return 0;
 }
 
-// Soma: res = a + b.
-void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+static inline void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     int maxSize = (a.size > b.size) ? a.size : b.size;
     unsigned long long carry = 0;
     for (int i = 0; i < maxSize; i++){
@@ -92,29 +79,26 @@ void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
         carry = sum >> 32;
     }
     res.size = maxSize;
-    if(carry){
+    if(carry) {
         res.words[res.size] = (unsigned int)carry;
         res.size++;
     }
 }
 
-// Subtração: res = a - b; supõe que a >= b.
-void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+static inline void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long borrow = 0;
     res.size = a.size;
     for(int i = 0; i < a.size; i++){
-        unsigned long long sub = (unsigned long long)a.words[i] - ( (i < b.size) ? b.words[i] : 0 ) - borrow;
+        unsigned long long sub = (unsigned long long)a.words[i] - ((i < b.size) ? b.words[i] : 0) - borrow;
         res.words[i] = (unsigned int)(sub & 0xFFFFFFFFUL);
-        // Se houve “underflow”
-        borrow = (a.words[i] < ((i < b.size) ? b.words[i] : 0) + borrow) ? 1 : 0;
+        // Se houve “borrow”: se a.words[i] não comporta a subtração
+        borrow = (a.words[i] < ((i < b.size ? b.words[i] : 0) + borrow)) ? 1 : 0;
     }
     while(res.size > 1 && res.words[res.size - 1] == 0)
         res.size--;
 }
 
-// Multiplicação: res = a * b.
-void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
-    // Inicializa array temporário para até a.size+b.size palavras.
+static inline void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long temp[130] = {0};
     int resSize = a.size + b.size;
     for (int i = 0; i < a.size; i++){
@@ -129,21 +113,21 @@ void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     res.size = resSize;
     while (res.size > 1 && temp[res.size - 1] == 0)
         res.size--;
-    for (int i = 0; i < res.size; i++){
+    for (int i = 0; i < res.size; i++)
         res.words[i] = (unsigned int)temp[i];
-    }
 }
 
-// Retorna o bit da posição pos (0 = LSB) do BigInt.
-int getBit(const BigInt &a, int pos) {
+//
+// Funções de “shift” e acesso a bit (em linha para evitar overhead)
+//
+static inline int getBit(const BigInt &a, int pos) {
     int word = pos / 32;
-    int bit = pos % 32;
+    int bit = pos & 31;
     if(word >= a.size) return 0;
     return (a.words[word] >> bit) & 1;
 }
 
-// Desloca o BigInt para a esquerda em 1 bit: a = a << 1.
-void shiftLeftOne(BigInt &a) {
+static inline void shiftLeftOne(BigInt &a) {
     unsigned int carry = 0;
     for (int i = 0; i < a.size; i++){
         unsigned long long shifted = ((unsigned long long)a.words[i] << 1) | carry;
@@ -156,17 +140,33 @@ void shiftLeftOne(BigInt &a) {
     }
 }
 
-// Calcula o resto r = a mod d usando o algoritmo de divisão binária.
-void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
+static inline void shiftRightOne(BigInt &a) {
+    unsigned int carry = 0;
+    for (int i = a.size - 1; i >= 0; i--){
+        unsigned int newCarry = a.words[i] & 1;
+        a.words[i] = (a.words[i] >> 1) | (carry << 31);
+        carry = newCarry;
+    }
+    if(a.size > 1 && a.words[a.size - 1] == 0)
+        a.size--;
+}
+
+static inline bool isZero(const BigInt &a) {
+    return (a.size == 1 && a.words[0] == 0);
+}
+
+/*
+Função modBigInt: calcula r = a mod d usando divisão binária.
+*/
+static void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
     BigInt rem;
     initBigInt(rem);
-    // Determina o número de bits usados em a.
+    // Calcula o número efetivo de bits (removendo zeros à esquerda)
     int bitLen = a.size * 32;
-    while(bitLen > 0 && getBit(a, bitLen - 1) == 0)
+    while(bitLen > 0 && !getBit(a, bitLen - 1))
         bitLen--;
     for (int i = bitLen - 1; i >= 0; i--) {
         shiftLeftOne(rem);
-        // Adiciona o bit i de a
         if(getBit(a, i))
             rem.words[0] |= 1;
         if(compareBigInt(rem, d) >= 0) {
@@ -178,39 +178,79 @@ void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
     r = rem;
 }
 
-// Multiplicação modular: res = (a * b) mod mod.
-void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, const BigInt &mod) {
-    BigInt prod;
-    multiplyBigInt(prod, a, b);
-    modBigInt(prod, mod, res);
-}
-
-// Exponenciação modular: res = base^exponent mod mod.
-void modExpBigInt(BigInt &res, const BigInt &base, const BigInt &exponent, const BigInt &mod) {
+/*
+Multiplicação modular otimizada usando “double-and-add” (multiplicação russa).
+Em vez de iterar um número fixo de bits, fazemos while(!isZero(B)), usando diretamente
+a verificação do bit menos significativo de B.
+*/
+static void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, const BigInt &mod) {
     BigInt result;
     initBigInt(result);
-    result.words[0] = 1;  // result = 1
+    BigInt A = a, B = b;
+    modBigInt(A, mod, A);
+    // Em vez de iterar um número fixo de bits, loop enquanto B ≠ 0.
+    while (!isZero(B)) {
+        // Se o bit menos significativo de B estiver setado
+        if (B.words[0] & 1) {
+            BigInt temp;
+            addBigInt(temp, result, A);
+            if(compareBigInt(temp, mod) >= 0) {
+                BigInt temp2;
+                subtractBigInt(temp2, temp, mod);
+                result = temp2;
+            } else {
+                result = temp;
+            }
+        }
+        // Dobra A e reduz módulo mod
+        {
+            BigInt temp;
+            addBigInt(temp, A, A);
+            if(compareBigInt(temp, mod) >= 0) {
+                BigInt temp2;
+                subtractBigInt(temp2, temp, mod);
+                A = temp2;
+            } else {
+                A = temp;
+            }
+        }
+        shiftRightOne(B);
+    }
+    res = result;
+}
+
+/*
+Exponenciação modular: res = base^exponent mod mod.
+A otimização aqui substitui a rotina “getBit” em cada iteração por um laço que itera
+diretamente sobre cada word de exponent do mais significativo para o menos. Dessa forma,
+evitamos múltiplas chamadas a getBit() (reduzindo operações de divisão e módulo).
+*/
+static void modExpBigInt(BigInt &res, const BigInt &base, const BigInt &exponent, const BigInt &mod) {
+    BigInt result;
+    initBigInt(result);
+    result.words[0] = 1; // result = 1
+
     BigInt baseCopy = base;
-    int expBits = exponent.size * 32;
-    int bitLen = expBits;
-    while(bitLen > 0 && getBit(exponent, bitLen - 1) == 0)
-        bitLen--;
-    for (int i = bitLen - 1; i >= 0; i--) {
-        BigInt temp;
-        modMultiplyBigInt(temp, result, result, mod);
-        result = temp;
-        if(getBit(exponent, i)) {
-            modMultiplyBigInt(temp, result, baseCopy, mod);
+    modBigInt(baseCopy, mod, baseCopy);
+
+    // Processa cada word de exponent, do mais significativo para o menos.
+    for (int i = exponent.size - 1; i >= 0; i--) {
+        // Processa os 32 bits de cada word
+        for (int bit = 31; bit >= 0; bit--) {
+            BigInt temp;
+            modMultiplyBigInt(temp, result, result, mod);
             result = temp;
+            if(exponent.words[i] & (1u << bit)) {
+                modMultiplyBigInt(temp, result, baseCopy, mod);
+                result = temp;
+            }
         }
     }
     res = result;
 }
 
 /* ===== IMPLEMENTAÇÃO DO AES (ECB) ===== */
-// Para AES são definidas constantes estáticas.
 static const unsigned char sbox[256] = {
-  // 256 valores – tabela de substituição (S-box)
   0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
   0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
   0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
@@ -230,7 +270,6 @@ static const unsigned char sbox[256] = {
 };
 
 static const unsigned char invSbox[256] = {
-  // Tabela inversa (invS-box)
   0x52,0x09,0x6A,0xD5,0x30,0x36,0xA5,0x38,0xBF,0x40,0xA3,0x9E,0x81,0xF3,0xD7,0xFB,
   0x7C,0xE3,0x39,0x82,0x9B,0x2F,0xFF,0x87,0x34,0x8E,0x43,0x44,0xC4,0xDE,0xE9,0xCB,
   0x54,0x7B,0x94,0x32,0xA6,0xC2,0x23,0x3D,0xEE,0x4C,0x95,0x0B,0x42,0xFA,0xC3,0x4E,
@@ -253,8 +292,7 @@ static const unsigned char Rcon[11] = {
   0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
 };
 
-// Função para trocar (RotWord) um array de 4 bytes.
-void rotWord(unsigned char word[4]) {
+static inline void rotWord(unsigned char word[4]) {
     unsigned char temp = word[0];
     word[0] = word[1];
     word[1] = word[2];
@@ -262,24 +300,17 @@ void rotWord(unsigned char word[4]) {
     word[3] = temp;
 }
 
-// Função para aplicar sbox a 4 bytes.
-void subWord(unsigned char word[4]) {
+static inline void subWord(unsigned char word[4]) {
     for (int i = 0; i < 4; i++)
         word[i] = sbox[word[i]];
 }
 
-// Expande a chave (key) para gerar o round key schedule.
-// keyLen pode ser 16, 24 ou 32; nr (número de rodadas) é 10, 12 ou 14 respectivamente.
-// roundKeys deve ter espaço para 4*(nr+1)*4 bytes.
-void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys[], int &nr) {
+static void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys[], int &nr) {
     int Nk = keyLen / 4;
-    if (keyLen == 16) nr = 10;
-    else if (keyLen == 24) nr = 12;
-    else if (keyLen == 32) nr = 14;
+    nr = (keyLen == 16) ? 10 : (keyLen == 24 ? 12 : 14);
     int Nb = 4;
     int totalWords = Nb * (nr + 1);
     unsigned char temp[4];
-    // A chave original ocupa as primeiras Nk palavras.
     for (int i = 0; i < Nk; i++) {
         roundKeys[4*i + 0] = key[4*i + 0];
         roundKeys[4*i + 1] = key[4*i + 1];
@@ -305,63 +336,59 @@ void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys
     }
 }
 
-// Funções auxiliares de transformação do bloco.
-void SubBytes(unsigned char state[16]) {
+static inline void SubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = sbox[state[i]];
 }
 
-void InvSubBytes(unsigned char state[16]) {
+static inline void InvSubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = invSbox[state[i]];
 }
 
-void ShiftRows(unsigned char state[16]) {
+static inline void ShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
-    // Linha 0: permanece.
-    // Linha 1: desloca 1 à esquerda.
     state[1]  = temp[5];
     state[5]  = temp[9];
     state[9]  = temp[13];
     state[13] = temp[1];
-    // Linha 2: desloca 2.
+
     state[2]  = temp[10];
     state[6]  = temp[14];
     state[10] = temp[2];
     state[14] = temp[6];
-    // Linha 3: desloca 3.
+
     state[3]  = temp[15];
     state[7]  = temp[3];
     state[11] = temp[7];
     state[15] = temp[11];
 }
 
-void InvShiftRows(unsigned char state[16]) {
+static inline void InvShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
     state[1]  = temp[13];
     state[5]  = temp[1];
     state[9]  = temp[5];
     state[13] = temp[9];
-    
+
     state[2]  = temp[10];
     state[6]  = temp[14];
     state[10] = temp[2];
     state[14] = temp[6];
-    
+
     state[3]  = temp[7];
     state[7]  = temp[11];
     state[11] = temp[15];
     state[15] = temp[3];
 }
 
-// Multiplicação em GF(2^8)
-unsigned char xtime(unsigned char x) {
-    return ((x << 1) ^ ((x >> 7) & 1 ? 0x1b : 0));
+static inline unsigned char xtime(unsigned char x) {
+    return (unsigned char)((x << 1) ^ ((x >> 7) & 1 ? 0x1b : 0));
 }
 
-unsigned char multiplyGF(unsigned char a, unsigned char b) {
+static inline unsigned char multiplyGF(unsigned char a, unsigned char b) {
     unsigned char res = 0;
     for (int i = 0; i < 8; i++) {
         if(b & 1)
@@ -375,10 +402,11 @@ unsigned char multiplyGF(unsigned char a, unsigned char b) {
     return res;
 }
 
-void MixColumns(unsigned char state[16]) {
+static void MixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
-        unsigned char a0 = state[col+0], a1 = state[col+1], a2 = state[col+2], a3 = state[col+3];
+        unsigned char a0 = state[col+0], a1 = state[col+1],
+                      a2 = state[col+2], a3 = state[col+3];
         state[col+0] = xtime(a0) ^ (a1 ^ xtime(a1)) ^ a2 ^ a3;
         state[col+1] = a0 ^ xtime(a1) ^ (a2 ^ xtime(a2)) ^ a3;
         state[col+2] = a0 ^ a1 ^ xtime(a2) ^ (a3 ^ xtime(a3));
@@ -386,10 +414,11 @@ void MixColumns(unsigned char state[16]) {
     }
 }
 
-void InvMixColumns(unsigned char state[16]) {
+static void InvMixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
-        unsigned char a0 = state[col+0], a1 = state[col+1], a2 = state[col+2], a3 = state[col+3];
+        unsigned char a0 = state[col+0], a1 = state[col+1],
+                      a2 = state[col+2], a3 = state[col+3];
         state[col+0] = multiplyGF(a0,0x0e) ^ multiplyGF(a1,0x0b) ^ multiplyGF(a2,0x0d) ^ multiplyGF(a3,0x09);
         state[col+1] = multiplyGF(a0,0x09) ^ multiplyGF(a1,0x0e) ^ multiplyGF(a2,0x0b) ^ multiplyGF(a3,0x0d);
         state[col+2] = multiplyGF(a0,0x0d) ^ multiplyGF(a1,0x09) ^ multiplyGF(a2,0x0e) ^ multiplyGF(a3,0x0b);
@@ -397,20 +426,16 @@ void InvMixColumns(unsigned char state[16]) {
     }
 }
 
-// Adiciona a chave de rodada ao estado.
-void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
-    for (int i = 0; i < 16; i++){
+static inline void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
+    for (int i = 0; i < 16; i++)
         state[i] ^= roundKey[i];
-    }
 }
 
-// Cifra um bloco de 16 bytes com AES.
-void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16], const unsigned char roundKeys[], int nr) {
+static void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16],
+                         const unsigned char roundKeys[], int nr) {
     unsigned char state[16];
     memcpy(state, in, 16);
-    
-    AddRoundKey(state, roundKeys); // rodada 0
-
+    AddRoundKey(state, roundKeys);
     for (int round = 1; round < nr; round++){
         SubBytes(state);
         ShiftRows(state);
@@ -420,15 +445,13 @@ void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16], const 
     SubBytes(state);
     ShiftRows(state);
     AddRoundKey(state, roundKeys + nr*16);
-    
     memcpy(out, state, 16);
 }
 
-// Decifra um bloco de 16 bytes com AES.
-void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16], const unsigned char roundKeys[], int nr) {
+static void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16],
+                         const unsigned char roundKeys[], int nr) {
     unsigned char state[16];
     memcpy(state, in, 16);
-    
     AddRoundKey(state, roundKeys + nr*16);
     for (int round = nr - 1; round >= 1; round--){
         InvShiftRows(state);
@@ -439,7 +462,6 @@ void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16], const 
     InvShiftRows(state);
     InvSubBytes(state);
     AddRoundKey(state, roundKeys);
-    
     memcpy(out, state, 16);
 }
 
@@ -449,7 +471,7 @@ int main(int argc, char* argv[]) {
         cerr << "Uso: " << argv[0] << " entrada.txt saida.txt" << endl;
         return 1;
     }
-    
+
     ifstream fin(argv[1], ios::in);
     if(!fin.is_open()){
         cerr << "Erro ao abrir o arquivo de entrada." << endl;
@@ -460,20 +482,19 @@ int main(int argc, char* argv[]) {
         cerr << "Erro ao abrir o arquivo de saida." << endl;
         return 1;
     }
-    
+
     int n;
     fin >> n;
     string dummy;
     getline(fin, dummy);
-    
+
     // Chave AES global
     unsigned char aesKey[32];
     int aesKeyLen = 0; // em bytes
     bool keySet = false;
-    // Para AES, armazenaremos os round keys para cifra e decifração
-    unsigned char roundKeys[240]; // tamanho máximo para chave de 256 bits: 4*(14+1)*16 = 240 bytes
-    int nr = 0; // número de rodadas
-    
+    unsigned char roundKeys[240];
+    int nr = 0;
+
     for (int i = 0; i < n; i++){
         string line;
         getline(fin, line);
@@ -482,9 +503,8 @@ int main(int argc, char* argv[]) {
         istringstream iss(line);
         string command;
         iss >> command;
-        
+
         if(command == "dh") {
-            // Parâmetros: chaves privadas 'a' e 'b', e os parâmetros 'g' e 'p' (todos em hexadecimal)
             string a_str, b_str, g_str, p_str;
             iss >> a_str >> b_str >> g_str >> p_str;
             BigInt A, B, G, P;
@@ -492,54 +512,41 @@ int main(int argc, char* argv[]) {
             fromHex(B, b_str.c_str());
             fromHex(G, g_str.c_str());
             fromHex(P, p_str.c_str());
-            
-            // Calcula B_pub = g^b mod p
+
             BigInt B_pub;
             modExpBigInt(B_pub, G, B, P);
-            // Calcula o segredo compartilhado: s = (B_pub)^a mod p
+
             BigInt s_bn;
             modExpBigInt(s_bn, B_pub, A, P);
-            
-            // Determina o tamanho da chave AES: se 'a' tem 32, 48 ou 64 dígitos hexadecimais,
-            // a chave terá 16, 24 ou 32 bytes respectivamente.
-            int keyHexDigits = a_str.size();
+
+            int keyHexDigits = (int)a_str.size();
             aesKeyLen = keyHexDigits / 2;
-            // Converte s_bn para string hexadecimal com exatamente keyHexDigits dígitos.
             string s_hex = toHex(s_bn, keyHexDigits);
-            // Converte s_hex para aesKey
             for (int j = 0; j < aesKeyLen; j++){
                 string byteStr = s_hex.substr(j*2, 2);
                 aesKey[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
             }
             keySet = true;
-            // Prepara round keys para AES com a nova chave.
             KeyExpansion(aesKey, aesKeyLen, roundKeys, nr);
-            
             fout << "s=" << s_hex << "\n";
         }
         else if(command == "d") {
-            // Decriptação: o próximo token é o texto cifrado em hexadecimal.
             string cipherHex;
             iss >> cipherHex;
-            // Se a string hex não atingir um múltiplo de 32 dígitos (128 bits),
-            // completa com zeros à esquerda.
             if (cipherHex.size() % 32 != 0) {
-                int zeros = 32 - (cipherHex.size() % 32);
+                int zeros = 32 - (int)(cipherHex.size() % 32);
                 cipherHex = string(zeros, '0') + cipherHex;
             }
-            int cipherLen = cipherHex.size() / 2; // número de bytes
+            int cipherLen = (int)cipherHex.size() / 2;
             unsigned char *cipherBytes = new unsigned char[cipherLen];
-            // Converte a string para bytes (agora já com o tamanho correto do bloco)
             for (int j = 0; j < cipherLen; j++){
                 string byteStr = cipherHex.substr(j*2, 2);
                 cipherBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
             }
             unsigned char *plainBytes = new unsigned char[cipherLen];
-            // Processa cada bloco de 16 bytes com AES
             for (int j = 0; j < cipherLen; j += 16) {
                 AES_Decrypt_Block(cipherBytes + j, plainBytes + j, roundKeys, nr);
             }
-            // Converte os bytes para hexadecimal (sempre 16 bytes por bloco)
             string plainHex = "";
             char buf[3];
             for (int j = 0; j < cipherLen; j++){
@@ -551,23 +558,19 @@ int main(int argc, char* argv[]) {
             delete[] plainBytes;
         }
         else if(command == "e") {
-            // Encriptação: o próximo token é a mensagem em hexadecimal.
             string plainHex;
             iss >> plainHex;
-            // Se a string não formar um múltiplo de 32 dígitos, completa com zeros à esquerda
             if (plainHex.size() % 32 != 0) {
-                int zeros = 32 - (plainHex.size() % 32);
+                int zeros = 32 - (int)(plainHex.size() % 32);
                 plainHex = string(zeros, '0') + plainHex;
             }
-            int plainLen = plainHex.size() / 2; // número de bytes
+            int plainLen = (int)plainHex.size() / 2;
             unsigned char *plainBytes = new unsigned char[plainLen];
-            // Converte a string para bytes
             for (int j = 0; j < plainLen; j++){
                 string byteStr = plainHex.substr(j*2, 2);
                 plainBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
             }
             unsigned char *cipherBytes = new unsigned char[plainLen];
-            // Processa cada bloco de 16 bytes com AES
             for (int j = 0; j < plainLen; j += 16) {
                 AES_Encrypt_Block(plainBytes + j, cipherBytes + j, roundKeys, nr);
             }
@@ -582,7 +585,7 @@ int main(int argc, char* argv[]) {
             delete[] cipherBytes;
         }
     }
-    
+
     fin.close();
     fout.close();
     return 0;
