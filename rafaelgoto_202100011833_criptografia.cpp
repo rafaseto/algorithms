@@ -6,26 +6,28 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <thread>
 
 using namespace std;
 
-/* ===== IMPLEMENTAÇÃO DE BIGINT (operações com números grandes) ===== */
+inline int myMin(int a, int b) { return (a < b) ? a : b; }
+
+// ===== IMPLEMENTAÇÃO DE BIGINT (operações com números grandes) =====
 struct BigInt {
     // Representa o número em little‑endian: word 0 é o LSB.
     unsigned int words[130];
     int size; // número de palavras utilizadas (mínimo 1)
 };
 
-static inline void initBigInt(BigInt &a) {
+void initBigInt(BigInt &a) {
     memset(a.words, 0, sizeof(a.words));
     a.size = 1;
 }
 
-static inline void fromHex(BigInt &a, const char *hex) {
+void fromHex(BigInt &a, const char *hex) {
     initBigInt(a);
-    int len = (int)strlen(hex);
+    int len = strlen(hex);
     a.size = (len + 7) / 8;
-    // Limpa as palavras (mesmo que init já tenha zerado todo o array)
     for (int i = 0; i < a.size; i++)
         a.words[i] = 0;
     int pos = len;
@@ -43,11 +45,11 @@ static inline void fromHex(BigInt &a, const char *hex) {
         a.size--;
 }
 
-static inline string toHex(const BigInt &a, int expectedHex) {
+string toHex(const BigInt &a, int expectedHex) {
     int wordsNeeded = (expectedHex + 7) / 8;
     string result = "";
-    char buf[9];
     for (int i = wordsNeeded - 1; i >= 0; i--) {
+        char buf[9];
         int width = (i == wordsNeeded - 1 && (expectedHex % 8 != 0)) ? (expectedHex % 8) : 8;
         unsigned int w = (i < a.size ? a.words[i] : 0);
         sprintf(buf, "%0*X", width, w);
@@ -56,7 +58,7 @@ static inline string toHex(const BigInt &a, int expectedHex) {
     return result;
 }
 
-static inline int compareBigInt(const BigInt &a, const BigInt &b) {
+int compareBigInt(const BigInt &a, const BigInt &b) {
     if(a.size > b.size) return 1;
     if(a.size < b.size) return -1;
     for (int i = a.size - 1; i >= 0; i--) {
@@ -66,7 +68,7 @@ static inline int compareBigInt(const BigInt &a, const BigInt &b) {
     return 0;
 }
 
-static inline void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     int maxSize = (a.size > b.size) ? a.size : b.size;
     unsigned long long carry = 0;
     for (int i = 0; i < maxSize; i++){
@@ -85,20 +87,19 @@ static inline void addBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     }
 }
 
-static inline void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+void subtractBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long borrow = 0;
     res.size = a.size;
     for(int i = 0; i < a.size; i++){
         unsigned long long sub = (unsigned long long)a.words[i] - ((i < b.size) ? b.words[i] : 0) - borrow;
         res.words[i] = (unsigned int)(sub & 0xFFFFFFFFUL);
-        // Se houve “borrow”: se a.words[i] não comporta a subtração
-        borrow = (a.words[i] < ((i < b.size ? b.words[i] : 0) + borrow)) ? 1 : 0;
+        borrow = (a.words[i] < ((i < b.size) ? b.words[i] : 0) + borrow) ? 1 : 0;
     }
     while(res.size > 1 && res.words[res.size - 1] == 0)
         res.size--;
 }
 
-static inline void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
+void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b) {
     unsigned long long temp[130] = {0};
     int resSize = a.size + b.size;
     for (int i = 0; i < a.size; i++){
@@ -117,17 +118,14 @@ static inline void multiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b)
         res.words[i] = (unsigned int)temp[i];
 }
 
-//
-// Funções de “shift” e acesso a bit (em linha para evitar overhead)
-//
-static inline int getBit(const BigInt &a, int pos) {
+int getBit(const BigInt &a, int pos) {
     int word = pos / 32;
-    int bit = pos & 31;
+    int bit = pos % 32;
     if(word >= a.size) return 0;
     return (a.words[word] >> bit) & 1;
 }
 
-static inline void shiftLeftOne(BigInt &a) {
+void shiftLeftOne(BigInt &a) {
     unsigned int carry = 0;
     for (int i = 0; i < a.size; i++){
         unsigned long long shifted = ((unsigned long long)a.words[i] << 1) | carry;
@@ -140,7 +138,7 @@ static inline void shiftLeftOne(BigInt &a) {
     }
 }
 
-static inline void shiftRightOne(BigInt &a) {
+void shiftRightOne(BigInt &a) {
     unsigned int carry = 0;
     for (int i = a.size - 1; i >= 0; i--){
         unsigned int newCarry = a.words[i] & 1;
@@ -151,19 +149,15 @@ static inline void shiftRightOne(BigInt &a) {
         a.size--;
 }
 
-static inline bool isZero(const BigInt &a) {
+bool isZero(const BigInt &a) {
     return (a.size == 1 && a.words[0] == 0);
 }
 
-/*
-Função modBigInt: calcula r = a mod d usando divisão binária.
-*/
-static void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
+void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
     BigInt rem;
     initBigInt(rem);
-    // Calcula o número efetivo de bits (removendo zeros à esquerda)
     int bitLen = a.size * 32;
-    while(bitLen > 0 && !getBit(a, bitLen - 1))
+    while(bitLen > 0 && getBit(a, bitLen - 1) == 0)
         bitLen--;
     for (int i = bitLen - 1; i >= 0; i--) {
         shiftLeftOne(rem);
@@ -178,20 +172,15 @@ static void modBigInt(const BigInt &a, const BigInt &d, BigInt &r) {
     r = rem;
 }
 
-/*
-Multiplicação modular otimizada usando “double-and-add” (multiplicação russa).
-Em vez de iterar um número fixo de bits, fazemos while(!isZero(B)), usando diretamente
-a verificação do bit menos significativo de B.
-*/
-static void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, const BigInt &mod) {
-    BigInt result;
+void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, const BigInt &mod) {
+    BigInt result, A, B;
     initBigInt(result);
-    BigInt A = a, B = b;
+    A = a;
     modBigInt(A, mod, A);
-    // Em vez de iterar um número fixo de bits, loop enquanto B ≠ 0.
-    while (!isZero(B)) {
-        // Se o bit menos significativo de B estiver setado
-        if (B.words[0] & 1) {
+    B = b;
+    int totalBits = B.size * 32;
+    for (int i = 0; i < totalBits; i++) {
+        if(getBit(B, 0)) {
             BigInt temp;
             addBigInt(temp, result, A);
             if(compareBigInt(temp, mod) >= 0) {
@@ -202,7 +191,6 @@ static void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, con
                 result = temp;
             }
         }
-        // Dobra A e reduz módulo mod
         {
             BigInt temp;
             addBigInt(temp, A, A);
@@ -215,41 +203,36 @@ static void modMultiplyBigInt(BigInt &res, const BigInt &a, const BigInt &b, con
             }
         }
         shiftRightOne(B);
+        if(isZero(B))
+            break;
     }
     res = result;
 }
 
-/*
-Exponenciação modular: res = base^exponent mod mod.
-A otimização aqui substitui a rotina “getBit” em cada iteração por um laço que itera
-diretamente sobre cada word de exponent do mais significativo para o menos. Dessa forma,
-evitamos múltiplas chamadas a getBit() (reduzindo operações de divisão e módulo).
-*/
-static void modExpBigInt(BigInt &res, const BigInt &base, const BigInt &exponent, const BigInt &mod) {
+void modExpBigInt(BigInt &res, const BigInt &base, const BigInt &exponent, const BigInt &mod) {
     BigInt result;
     initBigInt(result);
-    result.words[0] = 1; // result = 1
-
+    result.words[0] = 1;
     BigInt baseCopy = base;
     modBigInt(baseCopy, mod, baseCopy);
-
-    // Processa cada word de exponent, do mais significativo para o menos.
-    for (int i = exponent.size - 1; i >= 0; i--) {
-        // Processa os 32 bits de cada word
-        for (int bit = 31; bit >= 0; bit--) {
-            BigInt temp;
-            modMultiplyBigInt(temp, result, result, mod);
+    int expBits = exponent.size * 32;
+    int bitLen = expBits;
+    while(bitLen > 0 && getBit(exponent, bitLen - 1) == 0)
+        bitLen--;
+    for (int i = bitLen - 1; i >= 0; i--) {
+        BigInt temp;
+        modMultiplyBigInt(temp, result, result, mod);
+        result = temp;
+        if(getBit(exponent, i)) {
+            modMultiplyBigInt(temp, result, baseCopy, mod);
             result = temp;
-            if(exponent.words[i] & (1u << bit)) {
-                modMultiplyBigInt(temp, result, baseCopy, mod);
-                result = temp;
-            }
         }
     }
     res = result;
 }
 
-/* ===== IMPLEMENTAÇÃO DO AES (ECB) ===== */
+// ===== IMPLEMENTAÇÃO DO AES (ECB) =====
+
 static const unsigned char sbox[256] = {
   0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
   0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
@@ -292,7 +275,7 @@ static const unsigned char Rcon[11] = {
   0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
 };
 
-static inline void rotWord(unsigned char word[4]) {
+void rotWord(unsigned char word[4]) {
     unsigned char temp = word[0];
     word[0] = word[1];
     word[1] = word[2];
@@ -300,12 +283,12 @@ static inline void rotWord(unsigned char word[4]) {
     word[3] = temp;
 }
 
-static inline void subWord(unsigned char word[4]) {
+void subWord(unsigned char word[4]) {
     for (int i = 0; i < 4; i++)
         word[i] = sbox[word[i]];
 }
 
-static void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys[], int &nr) {
+void KeyExpansion(const unsigned char key[], int keyLen, unsigned char roundKeys[], int &nr) {
     int Nk = keyLen / 4;
     nr = (keyLen == 16) ? 10 : (keyLen == 24 ? 12 : 14);
     int Nb = 4;
@@ -336,59 +319,59 @@ static void KeyExpansion(const unsigned char key[], int keyLen, unsigned char ro
     }
 }
 
-static inline void SubBytes(unsigned char state[16]) {
+void SubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = sbox[state[i]];
 }
 
-static inline void InvSubBytes(unsigned char state[16]) {
+void InvSubBytes(unsigned char state[16]) {
     for (int i = 0; i < 16; i++)
         state[i] = invSbox[state[i]];
 }
 
-static inline void ShiftRows(unsigned char state[16]) {
+void ShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
     state[1]  = temp[5];
     state[5]  = temp[9];
     state[9]  = temp[13];
     state[13] = temp[1];
-
+    
     state[2]  = temp[10];
     state[6]  = temp[14];
     state[10] = temp[2];
     state[14] = temp[6];
-
+    
     state[3]  = temp[15];
     state[7]  = temp[3];
     state[11] = temp[7];
     state[15] = temp[11];
 }
 
-static inline void InvShiftRows(unsigned char state[16]) {
+void InvShiftRows(unsigned char state[16]) {
     unsigned char temp[16];
     memcpy(temp, state, 16);
     state[1]  = temp[13];
     state[5]  = temp[1];
     state[9]  = temp[5];
     state[13] = temp[9];
-
+    
     state[2]  = temp[10];
     state[6]  = temp[14];
     state[10] = temp[2];
     state[14] = temp[6];
-
+    
     state[3]  = temp[7];
     state[7]  = temp[11];
     state[11] = temp[15];
     state[15] = temp[3];
 }
 
-static inline unsigned char xtime(unsigned char x) {
-    return (unsigned char)((x << 1) ^ ((x >> 7) & 1 ? 0x1b : 0));
+unsigned char xtime(unsigned char x) {
+    return ((x << 1) ^ ((x >> 7) & 1 ? 0x1b : 0));
 }
 
-static inline unsigned char multiplyGF(unsigned char a, unsigned char b) {
+unsigned char multiplyGF(unsigned char a, unsigned char b) {
     unsigned char res = 0;
     for (int i = 0; i < 8; i++) {
         if(b & 1)
@@ -402,7 +385,7 @@ static inline unsigned char multiplyGF(unsigned char a, unsigned char b) {
     return res;
 }
 
-static void MixColumns(unsigned char state[16]) {
+void MixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
         unsigned char a0 = state[col+0], a1 = state[col+1],
@@ -414,7 +397,7 @@ static void MixColumns(unsigned char state[16]) {
     }
 }
 
-static void InvMixColumns(unsigned char state[16]) {
+void InvMixColumns(unsigned char state[16]) {
     for (int c = 0; c < 4; c++){
         int col = 4 * c;
         unsigned char a0 = state[col+0], a1 = state[col+1],
@@ -426,12 +409,12 @@ static void InvMixColumns(unsigned char state[16]) {
     }
 }
 
-static inline void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
+void AddRoundKey(unsigned char state[16], const unsigned char roundKey[16]) {
     for (int i = 0; i < 16; i++)
         state[i] ^= roundKey[i];
 }
 
-static void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16],
+void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16],
                          const unsigned char roundKeys[], int nr) {
     unsigned char state[16];
     memcpy(state, in, 16);
@@ -448,7 +431,7 @@ static void AES_Encrypt_Block(const unsigned char in[16], unsigned char out[16],
     memcpy(out, state, 16);
 }
 
-static void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16],
+void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16],
                          const unsigned char roundKeys[], int nr) {
     unsigned char state[16];
     memcpy(state, in, 16);
@@ -465,13 +448,13 @@ static void AES_Decrypt_Block(const unsigned char in[16], unsigned char out[16],
     memcpy(out, state, 16);
 }
 
-/* ===== FUNÇÃO MAIN ===== */
+// ===== FUNÇÃO MAIN =====
 int main(int argc, char* argv[]) {
     if(argc != 3) {
         cerr << "Uso: " << argv[0] << " entrada.txt saida.txt" << endl;
         return 1;
     }
-
+    
     ifstream fin(argv[1], ios::in);
     if(!fin.is_open()){
         cerr << "Erro ao abrir o arquivo de entrada." << endl;
@@ -482,19 +465,19 @@ int main(int argc, char* argv[]) {
         cerr << "Erro ao abrir o arquivo de saida." << endl;
         return 1;
     }
-
+    
     int n;
     fin >> n;
     string dummy;
     getline(fin, dummy);
-
+    
     // Chave AES global
     unsigned char aesKey[32];
     int aesKeyLen = 0; // em bytes
     bool keySet = false;
     unsigned char roundKeys[240];
     int nr = 0;
-
+    
     for (int i = 0; i < n; i++){
         string line;
         getline(fin, line);
@@ -503,7 +486,7 @@ int main(int argc, char* argv[]) {
         istringstream iss(line);
         string command;
         iss >> command;
-
+        
         if(command == "dh") {
             string a_str, b_str, g_str, p_str;
             iss >> a_str >> b_str >> g_str >> p_str;
@@ -512,14 +495,14 @@ int main(int argc, char* argv[]) {
             fromHex(B, b_str.c_str());
             fromHex(G, g_str.c_str());
             fromHex(P, p_str.c_str());
-
+            
             BigInt B_pub;
             modExpBigInt(B_pub, G, B, P);
-
+            
             BigInt s_bn;
             modExpBigInt(s_bn, B_pub, A, P);
-
-            int keyHexDigits = (int)a_str.size();
+            
+            int keyHexDigits = a_str.size();
             aesKeyLen = keyHexDigits / 2;
             string s_hex = toHex(s_bn, keyHexDigits);
             for (int j = 0; j < aesKeyLen; j++){
@@ -534,19 +517,40 @@ int main(int argc, char* argv[]) {
             string cipherHex;
             iss >> cipherHex;
             if (cipherHex.size() % 32 != 0) {
-                int zeros = 32 - (int)(cipherHex.size() % 32);
+                int zeros = 32 - (cipherHex.size() % 32);
                 cipherHex = string(zeros, '0') + cipherHex;
             }
-            int cipherLen = (int)cipherHex.size() / 2;
+            int cipherLen = cipherHex.size() / 2;
             unsigned char *cipherBytes = new unsigned char[cipherLen];
             for (int j = 0; j < cipherLen; j++){
                 string byteStr = cipherHex.substr(j*2, 2);
                 cipherBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
             }
             unsigned char *plainBytes = new unsigned char[cipherLen];
-            for (int j = 0; j < cipherLen; j += 16) {
-                AES_Decrypt_Block(cipherBytes + j, plainBytes + j, roundKeys, nr);
+            
+            // Paralelização da descriptografia:
+            unsigned int threadCount = std::thread::hardware_concurrency();
+            if(threadCount == 0)
+                threadCount = 8; // valor default
+            int blockCount = cipherLen / 16;
+            int blocksPerThread = (blockCount + threadCount - 1) / threadCount;
+            
+            std::thread *threads = new std::thread[threadCount];
+            for (unsigned int t = 0; t < threadCount; t++){
+                int startBlock = t * blocksPerThread;
+                int endBlock = myMin(startBlock + blocksPerThread, blockCount);
+                threads[t] = std::thread([=]() {
+                    for (int b = startBlock; b < endBlock; b++){
+                        int offset = b * 16;
+                        AES_Decrypt_Block(cipherBytes + offset, plainBytes + offset, roundKeys, nr);
+                    }
+                });
             }
+            for (unsigned int t = 0; t < threadCount; t++){
+                threads[t].join();
+            }
+            delete[] threads;
+            
             string plainHex = "";
             char buf[3];
             for (int j = 0; j < cipherLen; j++){
@@ -561,19 +565,40 @@ int main(int argc, char* argv[]) {
             string plainHex;
             iss >> plainHex;
             if (plainHex.size() % 32 != 0) {
-                int zeros = 32 - (int)(plainHex.size() % 32);
+                int zeros = 32 - (plainHex.size() % 32);
                 plainHex = string(zeros, '0') + plainHex;
             }
-            int plainLen = (int)plainHex.size() / 2;
+            int plainLen = plainHex.size() / 2;
             unsigned char *plainBytes = new unsigned char[plainLen];
             for (int j = 0; j < plainLen; j++){
                 string byteStr = plainHex.substr(j*2, 2);
                 plainBytes[j] = (unsigned char) strtoul(byteStr.c_str(), NULL, 16);
             }
             unsigned char *cipherBytes = new unsigned char[plainLen];
-            for (int j = 0; j < plainLen; j += 16) {
-                AES_Encrypt_Block(plainBytes + j, cipherBytes + j, roundKeys, nr);
+            
+            // Paralelização da encriptação:
+            unsigned int threadCount = std::thread::hardware_concurrency();
+            if(threadCount == 0)
+                threadCount = 4;
+            int blockCount = plainLen / 16;
+            int blocksPerThread = (blockCount + threadCount - 1) / threadCount;
+            
+            std::thread *threads = new std::thread[threadCount];
+            for (unsigned int t = 0; t < threadCount; t++){
+                int startBlock = t * blocksPerThread;
+                int endBlock = myMin(startBlock + blocksPerThread, blockCount);
+                threads[t] = std::thread([=]() {
+                    for (int b = startBlock; b < endBlock; b++){
+                        int offset = b * 16;
+                        AES_Encrypt_Block(plainBytes + offset, cipherBytes + offset, roundKeys, nr);
+                    }
+                });
             }
+            for (unsigned int t = 0; t < threadCount; t++){
+                threads[t].join();
+            }
+            delete[] threads;
+            
             string cipherOut = "";
             char buf[3];
             for (int j = 0; j < plainLen; j++){
@@ -585,7 +610,7 @@ int main(int argc, char* argv[]) {
             delete[] cipherBytes;
         }
     }
-
+    
     fin.close();
     fout.close();
     return 0;
